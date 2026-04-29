@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EarnToAnswer | Premium Earning Platform</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+</head>
+<body class="auth-mode"> <!-- class toggles based on login state -->
+
+    <!-- LANDING PAGE (Visible when logged out) -->
+    <div id="landing-page" class="landing-wrapper">
+        <nav class="landing-nav">
+            <div class="logo">
+                <i class='bx bxs-zap'></i>
+                <span>EarnToAnswer</span>
+            </div>
+            <div class="nav-auth-btns">
+                <button class="btn-text" onclick="showAuthModal('login')">Login</button>
+                <button class="btn btn-primary" onclick="showAuthModal('register')">Get Started</button>
+            </div>
+        </nav>
+
+        <header class="hero-section">
+            <div class="hero-content">
+                <span class="badge">Join 50,000+ Active Earners</span>
+                <h1>Turn Your Free Time into <span class="text-gradient">USDT Rewards</span></h1>
+                <p>Complete simple surveys, watch sponsor videos, and participate in daily tasks to earn crypto. Automatic payouts every Sunday.</p>
+                <div class="hero-btns">
+                    <button class="btn btn-primary btn-lg" onclick="showAuthModal('register')">Start Earning Now</button>
+                    <button class="btn btn-outline btn-lg">How it Works</button>
+                </div>
+                <div class="hero-stats">
+                    <div class="h-stat">
+                        <strong>$1.2M+</strong>
+                        <span>Paid Out</span>
+                    </div>
+                    <div class="h-stat">
+                        <strong>150+</strong>
+                        <span>Daily Tasks</span>
+                    </div>
+                    <div class="h-stat">
+                        <strong>4.8/5</strong>
+                        <span>User Rating</span>
+                    </div>
+                </div>
+            </div>
+            <div class="hero-image">
+                <div class="floating-card c1">
+                    <i class='bx bxs-check-circle'></i>
+                    <div>
+                        <p>Survey Completed</p>
+                        <span>+$2.50 USDT</span>
+                    </div>
+                </div>
+                <div class="floating-card c2">
+                    <i class='bx bxs-video-recording' ></i>
+                    <div>
+                        <p>Video Reward</p>
+                        <span>+$0.10 USDT</span>
+                    </div>
+                </div>
+                <img src="https://img.freepik.com/free-vector/digital-lifestyle-concept-illustration_114360-7327.jpg" alt="Dashboard Preview">
+            </div>
+        </header>
+    </div>
+
+    <!-- MAIN APP DASHBOARD (Visible when logged in) -->
+    <div id="main-app" class="app-wrapper screen-hidden">
+        <aside class="sidebar">
+            <div class="logo">
+                <i class='bx bxs-zap'></i>
+                <span>EarnToAnswer</span>
+            </div>
+            <ul class="nav-links">
+                <li class="nav-item">
+                    <a class="nav-link active" onclick="showSection('dashboard')">
+                        <i class='bx bxs-grid-alt'></i> Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" onclick="showSection('tasks')">
+                        <i class='bx bxs-collection'></i> Offerwalls
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" onclick="showSection('wallet')">
+                        <i class='bx bxs-wallet-alt'></i> Withdraw
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" onclick="showSection('referrals')">
+                        <i class='bx bxs-group'></i> Referrals
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" onclick="showSection('history')">
+                        <i class='bx bx-history'></i> History
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" onclick="showSection('leaderboard')">
+                        <i class='bx bxs-trophy'></i> Leaderboard
+                    </a>
+                </li>
+            </ul>
+            <div class="sidebar-footer">
+                <div class="user-card">
+                    <div class="avatar" id="user-avatar">?</div>
+                    <div class="user-details">
+                        <p id="user-email-sidebar">User</p>
+                        <span id="user-status">Verified Learner</span>
+                    </div>
+                    <button id="logout-btn" title="Logout"><i class='bx bx-log-out'></i></button>
+                </div>
+            </div>
+        </aside>
+
+        <div class="main-content">
+            <header class="top-nav">
+                <div class="breadcrumb">Dashboard / <span id="current-page">Overview</span></div>
+                <div class="top-actions">
+                    <div class="balance-pill">
+                        <i class='bx bxs-coin-stack'></i>
+                        <span id="balance">0.00</span> USDT
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dashboard Section -->
+            <section id="section-dashboard" class="content-section">
+                <div class="welcome-banner">
+                    <div class="banner-text">
+                        <h2>Good Morning, <span id="user-name-display">Earner</span>! 👋</h2>
+                        <p>You have 12 new high-paying surveys available today.</p>
+                    </div>
+                    <button class="btn btn-white" onclick="showSection('tasks')">View Tasks</button>
+                </div>
+
+                <div class="stats-row">
+                    <div class="stat-card">
+                        <div class="s-icon purple"><i class='bx bxs-wallet'></i></div>
+                        <div class="s-info">
+                            <p>Current Balance</p>
+                            <h3>$<span id="balance-big">0.00</span></h3>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="s-icon green"><i class='bx bxs-check-shield'></i></div>
+                        <div class="s-info">
+                            <p>Tasks Completed</p>
+                            <h3><span id="tasks-count">0</span></h3>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="s-icon orange"><i class='bx bxs-time-five'></i></div>
+                        <div class="s-info">
+                            <p>Pending Payout</p>
+                            <h3>Next Sunday</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-grid">
+                    <div class="main-tasks">
+                        <div class="section-header">
+                            <h3>Featured Tasks</h3>
+                            <a href="#" onclick="showSection('tasks')">See All</a>
+                        </div>
+                        <div class="task-list-mini">
+                            <div class="task-row">
+                                <div class="t-icon">📺</div>
+                                <div class="t-details">
+                                    <h4>Watch Sponsor Ads</h4>
+                                    <p id="video-progress">Progress: 0/10 Videos</p>
+                                </div>
+                                <div class="t-reward">+$0.10</div>
+                                <button class="btn btn-primary btn-sm" id="watch-video-btn" onclick="startVideoTask()">Watch</button>
+                            </div>
+                            <div class="task-row">
+                                <div class="t-icon">📝</div>
+                                <div class="t-details">
+                                    <h4>Daily Feedback Survey</h4>
+                                    <p>Est. time: 2 mins</p>
+                                </div>
+                                <div class="t-reward">+$0.50</div>
+                                <button class="btn btn-primary btn-sm" onclick="startSurveyTask()">Start</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="referral-box">
+                        <h3>Refer & Earn 10%</h3>
+                        <p>Share your link and earn 10% of whatever your friends earn, for life!</p>
+                        <div class="copy-link">
+                            <input type="text" value="earntoanswer.com/ref/user123" readonly>
+                            <button><i class='bx bx-copy'></i></button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Referrals Section -->
+            <section id="section-referrals" class="content-section screen-hidden">
+                <div class="header-row">
+                    <h1>Referral Program</h1>
+                    <p>Invite your friends and earn 10% of their earnings for life!</p>
+                </div>
+                <div class="stats-row">
+                    <div class="stat-card">
+                        <div class="s-icon purple"><i class='bx bxs-user-plus'></i></div>
+                        <div class="s-info">
+                            <p>Total Referrals</p>
+                            <h3 id="ref-count">0</h3>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="s-icon green"><i class='bx bxs-badge-dollar'></i></div>
+                        <div class="s-info">
+                            <p>Referral Earnings</p>
+                            <h3>$<span id="ref-earnings">0.00</span></h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="referral-box" style="max-width: 600px;">
+                    <h3>Your Unique Link</h3>
+                    <p>Share this link to start earning commissions.</p>
+                    <div class="copy-link">
+                        <input type="text" id="referral-link" value="https://earntoanswer.com/join?ref=YOUR_ID" readonly>
+                        <button onclick="copyReferralLink()"><i class='bx bx-copy'></i></button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- History Section -->
+            <section id="section-history" class="content-section screen-hidden">
+                <div class="header-row">
+                    <h1>Transaction History</h1>
+                    <p>Track your recent earnings and activity.</p>
+                </div>
+                <div class="card">
+                    <table class="history-table" style="width: 100%;">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Activity</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-body">
+                            <!-- Transactions will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Leaderboard Section -->
+            <section id="section-leaderboard" class="content-section screen-hidden">
+                <div class="header-row">
+                    <h1>Top Earners</h1>
+                    <p>See how you rank against the global community.</p>
+                </div>
+                <div class="card">
+                    <table class="history-table" style="width: 100%;">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>User</th>
+                                <th>Tasks</th>
+                                <th>Total Earned</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderboard-body">
+                            <!-- Leaderboard data will be injected here -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Offerwalls Section -->
+            <section id="section-tasks" class="content-section screen-hidden">
+                <div class="header-row">
+                    <h1>Task Center</h1>
+                    <p>Choose a category and start earning USDT.</p>
+                </div>
+
+                <div class="task-tabs">
+                    <button class="tab-btn active" onclick="filterTasks('all', this)">All Tasks</button>
+                    <button class="tab-btn" onclick="filterTasks('surveys', this)">Surveys</button>
+                    <button class="tab-btn" onclick="filterTasks('videos', this)">Videos</button>
+                </div>
+
+                <div class="task-grid">
+                    <!-- Video Card -->
+                    <div class="task-card-premium">
+                        <div class="t-badge">Popular</div>
+                        <div class="t-icon-large">📺</div>
+                        <h3>Watch Ads</h3>
+                        <p>Watch 10 short sponsor videos to earn.</p>
+                        <div class="t-meta">
+                            <span><i class='bx bx-time'></i> 2 min</span>
+                            <span class="t-amt">$0.10</span>
+                        </div>
+                        <button class="btn btn-primary btn-block" onclick="startVideoTask()">Start Watching</button>
+                    </div>
+
+                    <!-- Survey Card -->
+                    <div class="task-card-premium">
+                        <div class="t-badge green">High Pay</div>
+                        <div class="t-icon-large">📝</div>
+                        <h3>Daily Survey</h3>
+                        <p>Share your opinion on new products.</p>
+                        <div class="t-meta">
+                            <span><i class='bx bx-time'></i> 5 min</span>
+                            <span class="t-amt">$0.50</span>
+                        </div>
+                        <button class="btn btn-primary btn-block" onclick="startSurveyTask()">Take Survey</button>
+                    </div>
+
+                    <!-- Social Card -->
+                    <div class="task-card-premium">
+                        <div class="t-icon-large">🐦</div>
+                        <h3>Follow Twitter</h3>
+                        <p>Follow our official handle for news.</p>
+                        <div class="t-meta">
+                            <span><i class='bx bx-time'></i> 30 sec</span>
+                            <span class="t-amt">$0.05</span>
+                        </div>
+                        <button class="btn btn-outline btn-block">Verify Follow</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Withdrawal Section -->
+            <section id="section-wallet" class="content-section screen-hidden">
+                <div class="header-row">
+                    <h1>Withdraw Funds</h1>
+                    <p>Securely withdraw your earnings to your USDT TRC-20 wallet.</p>
+                </div>
+                <div class="stats-row">
+                    <div class="stat-card">
+                        <div class="s-icon purple"><i class='bx bxs-bank'></i></div>
+                        <div class="s-info">
+                            <p>Minimum Payout</p>
+                            <h3>$10.00</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="payout-card">
+                    <div class="input-group">
+                        <label>USDT Address (TRC-20)</label>
+                        <div class="input-with-icon">
+                            <i class='bx bxs-lock-alt'></i>
+                            <input type="text" id="wallet-address" placeholder="T..." style="width: 100%;">
+                        </div>
+                        <p class="hint">Payment is sent every Sunday at 00:00 UTC.</p>
+                    </div>
+                    <button class="btn btn-primary" id="save-wallet-btn">Update Wallet</button>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Auth Modal -->
+    <div id="auth-modal" class="modal-overlay screen-hidden">
+        <div class="modal-card">
+            <button class="close-modal" onclick="closeAuthModal()"><i class='bx bx-x'></i></button>
+            <div id="auth-login">
+                <h2>Welcome Back</h2>
+                <p>Login to continue your earning journey.</p>
+                <div class="input-group">
+                    <label>Email</label>
+                    <input type="email" id="email" placeholder="name@company.com">
+                </div>
+                <div class="input-group">
+                    <label>Password</label>
+                    <input type="password" id="password" placeholder="••••••••">
+                </div>
+                <button class="btn btn-primary btn-block" id="login-btn">Sign In</button>
+                <p class="auth-switch">Don't have an account? <a href="#" onclick="toggleAuth('register')">Sign Up</a></p>
+            </div>
+            <div id="auth-register" class="screen-hidden">
+                <h2>Create Account</h2>
+                <p>Join the community and start earning today.</p>
+                <div class="input-group">
+                    <label>Full Name</label>
+                    <input type="text" id="reg-name" placeholder="John Doe">
+                </div>
+                <div class="input-group">
+                    <label>Email</label>
+                    <input type="email" id="reg-email" placeholder="name@company.com">
+                </div>
+                <div class="input-group">
+                    <label>Password</label>
+                    <input type="password" id="reg-password" placeholder="••••••••">
+                </div>
+                <button class="btn btn-primary btn-block" id="register-btn">Create Account</button>
+                <p class="auth-switch">Already have an account? <a href="#" onclick="toggleAuth('login')">Login</a></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script type="module" src="app.js"></script>
+    <script>
+        function showAuthModal(type) {
+            document.getElementById('auth-modal').classList.remove('screen-hidden');
+            toggleAuth(type);
+        }
+        function closeAuthModal() {
+            document.getElementById('auth-modal').classList.add('screen-hidden');
+        }
+        function toggleAuth(type) {
+            if (type === 'login') {
+                document.getElementById('auth-login').classList.remove('screen-hidden');
+                document.getElementById('auth-register').classList.add('screen-hidden');
+            } else {
+                document.getElementById('auth-login').classList.add('screen-hidden');
+                document.getElementById('auth-register').classList.remove('screen-hidden');
+            }
+        }
+        function showSection(id) {
+            document.querySelectorAll('.content-section').forEach(s => s.classList.add('screen-hidden'));
+            document.getElementById('section-' + id).classList.remove('screen-hidden');
+            document.getElementById('current-page').innerText = id.charAt(0).toUpperCase() + id.slice(1);
+
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+        }
+    </script>
+</body>
+</html>
