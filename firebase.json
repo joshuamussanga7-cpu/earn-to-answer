@@ -24,5 +24,8 @@
         "supportEmail": "joshuamussanga7@gmail.com"
       }
     }
+  },
+  "functions": {
+    "source": "functions"
   }
 }

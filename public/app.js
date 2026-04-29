@@ -34,6 +34,28 @@ const saveWalletBtn = document.getElementById('save-wallet-btn');
 const userEmailSidebar = document.getElementById('user-email-sidebar');
 const userAvatar = document.getElementById('user-avatar');
 const themeToggle = document.getElementById('theme-toggle');
+const themeIcon = themeToggle ? themeToggle.querySelector('i') : null;
+
+// Load saved theme
+const savedTheme = localStorage.getItem('theme') || 'light';
+document.documentElement.setAttribute('data-theme', savedTheme);
+if (themeIcon) {
+    themeIcon.className = savedTheme === 'dark' ? 'bx bx-sun' : 'bx bx-moon';
+}
+
+if (themeToggle) {
+    themeToggle.addEventListener('click', () => {
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+
+        document.documentElement.setAttribute('data-theme', newTheme);
+        localStorage.setItem('theme', newTheme);
+
+        if (themeIcon) {
+            themeIcon.className = newTheme === 'dark' ? 'bx bx-sun' : 'bx bx-moon';
+        }
+    });
+}
 
 // Referral & Leaderboard Elements
 const refCountText = document.getElementById('ref-count');
@@ -83,6 +105,9 @@ registerBtn.addEventListener('click', async () => {
     const referredByCode = urlParams.get('ref') || null;
 
     try {
+        registerBtn.classList.add('btn-loading');
+        registerBtn.disabled = true;
+
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
         const myReferralCode = generateReferralCode();
@@ -118,20 +143,52 @@ registerBtn.addEventListener('click', async () => {
 
         showToast("Account created successfully!");
         window.closeAuthModal();
+        // Clear inputs
+        document.getElementById('reg-name').value = "";
+        document.getElementById('reg-email').value = "";
+        document.getElementById('reg-password').value = "";
     } catch (error) {
-        showToast(error.message, 'error');
+        console.error("Registration Error:", error);
+        let msg = error.message;
+        if (error.code === 'auth/email-already-in-use') msg = "This email is already registered.";
+        if (error.code === 'auth/weak-password') msg = "Password should be at least 6 characters.";
+        showToast(msg, 'error');
+    } finally {
+        registerBtn.classList.remove('btn-loading');
+        registerBtn.disabled = false;
     }
 });
 
 loginBtn.addEventListener('click', async () => {
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
+
+    if (!email || !password) {
+        showToast("Please enter email and password.", "error");
+        return;
+    }
+
+    loginBtn.classList.add('btn-loading');
+    loginBtn.disabled = true;
+
     try {
         await signInWithEmailAndPassword(auth, email, password);
         showToast("Welcome back!");
         window.closeAuthModal();
+        // Clear inputs
+        document.getElementById('email').value = "";
+        document.getElementById('password').value = "";
     } catch (error) {
-        showToast(error.message, 'error');
+        console.error("Login Error:", error);
+        let msg = "Invalid email or password.";
+        if (error.code === 'auth/user-not-found') msg = "No account found with this email.";
+        if (error.code === 'auth/wrong-password') msg = "Incorrect password.";
+        if (error.code === 'auth/invalid-email') msg = "Invalid email format.";
+        if (error.code === 'auth/too-many-requests') msg = "Too many failed attempts. Try again later.";
+        showToast(msg, 'error');
+    } finally {
+        loginBtn.classList.remove('btn-loading');
+        loginBtn.disabled = false;
     }
 });
 
@@ -148,6 +205,8 @@ saveWalletBtn.addEventListener('click', async () => {
     const user = auth.currentUser;
     const address = walletInput.value;
     if (user && address) {
+        saveWalletBtn.classList.add('btn-loading');
+        saveWalletBtn.disabled = true;
         try {
             await updateDoc(doc(db, "users", user.uid), {
                 walletAddress: address
@@ -155,6 +214,9 @@ saveWalletBtn.addEventListener('click', async () => {
             showToast("Wallet address updated!");
         } catch (error) {
             showToast(error.message, 'error');
+        } finally {
+            saveWalletBtn.classList.remove('btn-loading');
+            saveWalletBtn.disabled = false;
         }
     }
 });
@@ -265,6 +327,51 @@ window.startSurveyTask = async () => {
             confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
         }
     }
+};
+
+window.verifySocialTask = async (platform, url, reward) => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    // Check if already completed
+    const userRef = doc(db, "users", user.uid);
+    const userSnap = await getDoc(userRef);
+    if (userSnap.exists()) {
+        const data = userSnap.data();
+        if (data.completedSocialTasks && data.completedSocialTasks.includes(platform)) {
+            showToast("Task already completed!", "error");
+            return;
+        }
+    }
+
+    // Open social link in new tab
+    window.open(url, '_blank');
+
+    // Simulate verification
+    showToast(`Verifying ${platform} follow...`, "info");
+
+    setTimeout(async () => {
+        try {
+            const userRef = doc(db, "users", user.uid);
+            await updateDoc(userRef, {
+                balance: increment(reward),
+                totalTasksDone: increment(1),
+                completedSocialTasks: (userSnap.data().completedSocialTasks || []).concat([platform])
+            });
+
+            await addDoc(collection(db, "users", user.uid, "transactions"), {
+                activity: `Followed ${platform}`,
+                amount: reward,
+                status: "Completed",
+                timestamp: serverTimestamp()
+            });
+
+            showToast(`+$${reward} USDT earned!`);
+            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+        } catch (error) {
+            showToast("Verification failed. Try again.", "error");
+        }
+    }, 5000); // 5 second delay for verification
 };
 
 // --- Task Filtering ---
@@ -567,6 +674,9 @@ if (requestPayoutBtn) {
                 return;
             }
 
+            requestPayoutBtn.classList.add('btn-loading');
+            requestPayoutBtn.disabled = true;
+
             try {
                 // Deduct balance and create request
                 await updateDoc(userRef, { balance: increment(-bal) });
@@ -589,6 +699,9 @@ if (requestPayoutBtn) {
                 showToast("Withdrawal request sent! Payout on Sunday.");
             } catch (error) {
                 showToast(error.message, "error");
+            } finally {
+                requestPayoutBtn.classList.remove('btn-loading');
+                requestPayoutBtn.disabled = false;
             }
         }
     });
@@ -685,6 +798,7 @@ onAuthStateChanged(auth, (user) => {
     if (user) {
         landingPage.classList.add('screen-hidden');
         mainApp.classList.remove('screen-hidden');
+        document.body.classList.remove('auth-mode');
 
         onSnapshot(doc(db, "users", user.uid), (doc) => {
             if (doc.exists()) {
@@ -703,6 +817,7 @@ onAuthStateChanged(auth, (user) => {
     } else {
         landingPage.classList.remove('screen-hidden');
         mainApp.classList.add('screen-hidden');
+        document.body.classList.add('auth-mode');
     }
 });
 
@@ -713,13 +828,14 @@ function syncUserData(data) {
     document.getElementById('user-name-display').innerText = data.fullName || 'Earner';
 
     const bal = (data.balance || 0).toFixed(2);
-    balanceSpan.innerText = bal;
-    balanceBigSpan.innerText = bal;
-    tasksCountSpan.innerText = data.totalTasksDone || 0;
-    walletInput.value = data.walletAddress || "";
+    if (balanceSpan) balanceSpan.innerText = bal;
+    if (balanceBigSpan) balanceBigSpan.innerText = bal;
+    if (tasksCountSpan) tasksCountSpan.innerText = data.totalTasksDone || 0;
+    if (walletInput) walletInput.value = data.walletAddress || "";
 
     const progress = data.videoTasksCompleted || 0;
-    videoProgressText.innerText = `Progress: ${progress}/10 Videos`;
+    if (videoProgressText) videoProgressText.innerText = `Progress: ${progress}/10 Videos`;
+    if (tasksCountSpan) tasksCountSpan.innerText = data.totalTasksDone || 0;
 
     // Dashboard Achievements Mini-list
     const dashAch = document.getElementById('dashboard-achievements');
@@ -774,5 +890,6 @@ async function loadDashboardLeaderboard() {
     // Wheel Status
     const lastSpin = data.lastWheelSpin ? new Date(data.lastWheelSpin) : null;
     const canSpin = !lastSpin || (new Date() - lastSpin > 24 * 60 * 60 * 1000);
-    document.getElementById('wheel-status').innerText = canSpin ? "SPIN NOW" : "LOCKED";
+    const wheelStatus = document.getElementById('wheel-status');
+    if (wheelStatus) wheelStatus.innerText = canSpin ? "SPIN NOW" : "LOCKED";
 }
