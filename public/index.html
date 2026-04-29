@@ -7,6 +7,10 @@
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- PropellerAds Integration (Placeholder) -->
+    <!-- <script>(function(s,u,z,p){s.src=u,s.setAttribute('data-zone',z),p.appendChild(s);})(document.createElement('script'),'https://sdk.propellerads.com/auth/script.js', 'YOUR_ZONE_ID', document.documentElement)</script> -->
 </head>
 <body class="auth-mode"> <!-- class toggles based on login state -->
 
@@ -105,8 +109,32 @@
                         <i class='bx bxs-trophy'></i> Leaderboard
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link" onclick="showSection('achievements')">
+                        <i class='bx bxs-award'></i> Achievements
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" onclick="showSection('profile')">
+                        <i class='bx bxs-user-circle'></i> Profile
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" onclick="showSection('support')">
+                        <i class='bx bxs-help-circle'></i> Support
+                    </a>
+                </li>
             </ul>
             <div class="sidebar-footer">
+                <div class="level-box" style="padding: 0 24px 16px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; margin-bottom: 4px;">
+                        <span>LEVEL <span id="user-level">1</span></span>
+                        <span id="level-percent">0%</span>
+                    </div>
+                    <div style="width: 100%; height: 6px; background: rgba(0,0,0,0.05); border-radius: 10px; overflow: hidden;">
+                        <div id="level-bar" style="width: 0%; height: 100%; background: var(--primary); transition: width 0.5s;"></div>
+                    </div>
+                </div>
                 <div class="user-card">
                     <div class="avatar" id="user-avatar">?</div>
                     <div class="user-details">
@@ -121,13 +149,33 @@
         <div class="main-content">
             <header class="top-nav">
                 <div class="breadcrumb">Dashboard / <span id="current-page">Overview</span></div>
-                <div class="top-actions">
+                <div class="top-actions" style="display: flex; gap: 12px; align-items: center;">
+                    <div class="notification-wrapper">
+                        <button class="btn-icon" id="notif-bell" title="Notifications">
+                            <i class='bx bx-bell'></i>
+                            <span class="notification-dot" id="notif-dot"></span>
+                        </button>
+                        <div class="notification-dropdown" id="notif-dropdown">
+                            <div class="notif-header">
+                                <h4>Notifications</h4>
+                                <button onclick="clearNotifications()" style="background:none; border:none; font-size:11px; color:var(--primary); cursor:pointer; font-weight:700;">Clear All</button>
+                            </div>
+                            <div class="notif-list" id="notif-list">
+                                <div class="notif-item"><p style="font-size:12px; color:var(--text-muted); padding:20px; text-align:center;">No notifications yet</p></div>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="btn-icon" id="theme-toggle" title="Toggle Theme"><i class='bx bx-moon'></i></button>
                     <div class="balance-pill">
                         <i class='bx bxs-coin-stack'></i>
                         <span id="balance">0.00</span> USDT
                     </div>
                 </div>
             </header>
+
+            <div class="live-feed" id="live-payouts">
+                <div class="feed-item"><i class='bx bxs-bell'></i> Welcome to EarnToAnswer! Start completing tasks to earn.</div>
+            </div>
 
             <!-- Dashboard Section -->
             <section id="section-dashboard" class="content-section">
@@ -137,9 +185,11 @@
                     <div class="welcome-banner">
                         <div class="banner-text">
                             <h2>Good Morning, <span id="user-name-display">Earner</span>! 👋</h2>
-                            <p>Ready to earn some USDT today? You have new tasks waiting.</p>
+                            <p>Ready to earn some USDT today? Complete your daily check-in!</p>
+                            <div class="daily-rewards-grid" id="daily-checkin-grid">
+                                <!-- Days will be generated by JS -->
+                            </div>
                         </div>
-                        <button class="btn btn-white" onclick="showSection('tasks')">Start Earning</button>
                     </div>
 
                     <!-- Balance Card (4 cols) -->
@@ -153,28 +203,11 @@
                     <!-- Tasks Mini-list (8 cols) -->
                     <div class="main-tasks-bento">
                         <div class="section-header">
-                            <h3>Quick Tasks</h3>
-                            <a href="#" onclick="showSection('tasks')">View All</a>
+                            <h3>Weekly Analytics</h3>
+                            <span style="font-size: 12px; color: var(--text-muted);">Earnings (USDT)</span>
                         </div>
-                        <div class="task-list-mini">
-                            <div class="task-row">
-                                <div class="t-icon">📺</div>
-                                <div class="t-details">
-                                    <h4>Sponsor Ads</h4>
-                                    <p id="video-progress">Progress: 0/10 Videos</p>
-                                </div>
-                                <div class="t-reward">+$0.10</div>
-                                <button class="btn btn-primary btn-sm" id="watch-video-btn" onclick="startVideoTask()">Watch</button>
-                            </div>
-                            <div class="task-row">
-                                <div class="t-icon">📝</div>
-                                <div class="t-details">
-                                    <h4>Daily Survey</h4>
-                                    <p>Est. 2 mins</p>
-                                </div>
-                                <div class="t-reward">+$0.50</div>
-                                <button class="btn btn-primary btn-sm" onclick="startSurveyTask()">Start</button>
-                            </div>
+                        <div style="height: 200px; width: 100%; margin-top: 20px;">
+                            <canvas id="earningsChart"></canvas>
                         </div>
                     </div>
 
@@ -185,10 +218,10 @@
                             <p style="color: var(--text-muted); font-size: 13px; font-weight: 600;">Completed</p>
                             <h3 id="tasks-count">0</h3>
                         </div>
-                        <div class="stat-card-bento" style="width: 100%; height: 50%;">
-                            <div class="s-icon orange"><i class='bx bxs-group'></i></div>
-                            <p style="color: var(--text-muted); font-size: 13px; font-weight: 600;">Referrals</p>
-                            <h3 id="ref-count-dash">0</h3>
+                        <div class="stat-card-bento" style="width: 100%; height: 50%; cursor: pointer;" onclick="openWheel()">
+                            <div class="s-icon orange"><i class='bx bxs-color-fill'></i></div>
+                            <p style="color: var(--text-muted); font-size: 13px; font-weight: 600;">Fortune Wheel</p>
+                            <h3 id="wheel-status">SPIN NOW</h3>
                         </div>
                     </div>
 
@@ -199,9 +232,16 @@
                                 <h3>Invite Friends & Earn 10% Commission</h3>
                                 <p style="opacity: 0.8; font-size: 14px;">Share your unique link and earn 10% of their earnings for life. The more they earn, the more you make!</p>
                             </div>
-                            <div class="copy-link" style="min-width: 400px;">
-                                <input type="text" id="referral-link-dash" value="Generating link..." readonly>
-                                <button onclick="copyReferralLink()"><i class='bx bx-copy'></i></button>
+                            <div class="copy-link" style="min-width: 400px; display: flex; flex-direction: column; gap: 12px;">
+                                <div style="display: flex; gap: 8px; width: 100%;">
+                                    <input type="text" id="referral-link-dash" value="Generating link..." readonly>
+                                    <button onclick="copyReferralLink()"><i class='bx bx-copy'></i></button>
+                                </div>
+                                <div class="social-share">
+                                    <div class="share-btn telegram" onclick="shareReferral('telegram')"><i class='bx bxl-telegram'></i></div>
+                                    <div class="share-btn whatsapp" onclick="shareReferral('whatsapp')"><i class='bx bxl-whatsapp'></i></div>
+                                    <div class="share-btn twitter" onclick="shareReferral('twitter')"><i class='bx bxl-twitter'></i></div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -392,16 +432,141 @@
                         </div>
                         <p class="hint">Payment is sent every Sunday at 00:00 UTC.</p>
                     </div>
-                    <button class="btn btn-primary" id="save-wallet-btn">Update Wallet</button>
+                    <div style="display:flex; gap:12px;">
+                        <button class="btn btn-outline" id="save-wallet-btn">Update Wallet</button>
+                        <button class="btn btn-primary" id="request-payout-btn">Withdraw Funds</button>
+                    </div>
                 </div>
             </section>
+            <!-- Achievements Section -->
+            <section id="section-achievements" class="content-section screen-hidden">
+                <div class="header-row">
+                    <h1>Achievements</h1>
+                    <p>Unlock badges as you complete tasks and invite friends.</p>
+                </div>
+                <div class="badge-grid" id="badge-grid">
+                    <!-- Badges will be generated by JS -->
+                </div>
+            </section>
+            <!-- Profile Section -->
+            <section id="section-profile" class="content-section screen-hidden">
+                <div class="header-row">
+                    <h1>Profile Settings</h1>
+                    <p>Update your personal information and account security.</p>
+                </div>
+                <div class="dashboard-grid">
+                    <div class="card" style="grid-column: span 6;">
+                        <h3>Account Details</h3>
+                        <div class="input-group" style="margin-top:20px;">
+                            <label>Display Name</label>
+                            <input type="text" id="profile-name" placeholder="Your Name">
+                        </div>
+                        <div class="input-group">
+                            <label>Email Address</label>
+                            <input type="email" id="profile-email" readonly style="opacity:0.6;">
+                        </div>
+                        <button class="btn btn-primary" id="update-profile-btn">Save Changes</button>
+                    </div>
+                    <div class="card" style="grid-column: span 6;">
+                        <h3>Account Status</h3>
+                        <div style="margin-top:20px;">
+                            <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+                                <span>Verification</span>
+                                <span class="badge" style="background:var(--success); color:white;">Verified</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+                                <span>Membership</span>
+                                <span style="font-weight:700; color:var(--primary);">Standard Tier</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between;">
+                                <span>Joined On</span>
+                                <span id="join-date" style="color:var(--text-muted);">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Support Section -->
+            <section id="section-support" class="content-section screen-hidden">
+                <div class="header-row">
+                    <h1>Support Center</h1>
+                    <p>Need help? Check our FAQs or contact our team.</p>
+                </div>
+                <div class="dashboard-grid">
+                    <div class="card" style="grid-column: span 7;">
+                        <h3>Contact Support</h3>
+                        <div class="input-group" style="margin-top:20px;">
+                            <label>Subject</label>
+                            <select id="support-subject" style="width:100%; padding:12px; border-radius:12px; border:1px solid #e2e8f0;">
+                                <option>Payment Issue</option>
+                                <option>Task Not Credited</option>
+                                <option>Account Access</option>
+                                <option>Other</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Message</label>
+                            <textarea id="support-msg" rows="5" style="width:100%; padding:12px; border-radius:12px; border:1px solid #e2e8f0;" placeholder="Describe your issue..."></textarea>
+                        </div>
+                        <button class="btn btn-primary" onclick="submitTicket()">Submit Ticket</button>
+                    </div>
+                    <div class="card" style="grid-column: span 5;">
+                        <h3>Quick FAQ</h3>
+                        <div style="margin-top:20px;">
+                            <details style="margin-bottom:12px; cursor:pointer;">
+                                <summary style="font-weight:700;">When are payments sent?</summary>
+                                <p style="font-size:13px; color:var(--text-muted); padding-top:8px;">Payments are processed every Sunday at 00:00 UTC once you reach the $10 minimum.</p>
+                            </details>
+                            <details style="margin-bottom:12px; cursor:pointer;">
+                                <summary style="font-weight:700;">Can I use multiple accounts?</summary>
+                                <p style="font-size:13px; color:var(--text-muted); padding-top:8px;">No, multiple accounts will result in a permanent ban of all associated wallets.</p>
+                            </details>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Mobile Bottom Nav -->
+        <nav class="bottom-nav">
+            <div class="nav-item-mobile active" onclick="showSection('dashboard')">
+                <i class='bx bxs-grid-alt'></i>
+                <span>Home</span>
+            </div>
+            <div class="nav-item-mobile" onclick="showSection('tasks')">
+                <i class='bx bxs-collection'></i>
+                <span>Tasks</span>
+            </div>
+            <div class="nav-item-mobile" onclick="showSection('wallet')">
+                <i class='bx bxs-wallet-alt'></i>
+                <span>Wallet</span>
+            </div>
+            <div class="nav-item-mobile" onclick="showSection('referrals')">
+                <i class='bx bxs-group'></i>
+                <span>Invites</span>
+            </div>
+        </nav>
+    </div>
+
+    <!-- Fortune Wheel Modal -->
+    <div id="wheel-modal" class="modal-overlay screen-hidden">
+        <div class="modal-card" style="text-align: center;">
+            <button class="close-modal" onclick="closeWheel()" style="position: absolute; top: 20px; right: 20px; background: none; border: none; font-size: 24px; cursor: pointer;"><i class='bx bx-x'></i></button>
+            <h2>Lucky Wheel</h2>
+            <p>Spin once every 24 hours for a chance to win up to $1.00!</p>
+            <div class="wheel-container">
+                <div class="wheel-pointer"></div>
+                <canvas id="wheel" width="300" height="300"></canvas>
+            </div>
+            <button class="btn btn-primary btn-lg" id="spin-btn" onclick="spinWheel()">Spin for FREE</button>
         </div>
     </div>
 
     <!-- Auth Modal -->
     <div id="auth-modal" class="modal-overlay screen-hidden">
         <div class="modal-card">
-            <button class="close-modal" onclick="closeAuthModal()"><i class='bx bx-x'></i></button>
+            <button class="close-modal" onclick="closeAuthModal()" style="position: absolute; top: 20px; right: 20px; background: none; border: none; font-size: 24px; cursor: pointer;"><i class='bx bx-x'></i></button>
             <div id="auth-login">
                 <h2>Welcome Back</h2>
                 <p>Login to continue your earning journey.</p>
@@ -414,7 +579,7 @@
                     <input type="password" id="password" placeholder="••••••••">
                 </div>
                 <button class="btn btn-primary btn-block" id="login-btn">Sign In</button>
-                <p class="auth-switch">Don't have an account? <a href="#" onclick="toggleAuth('register')">Sign Up</a></p>
+                <p class="auth-switch" style="margin-top: 20px; text-align: center; font-size: 14px;">Don't have an account? <a href="#" onclick="toggleAuth('register')" style="color: var(--primary); font-weight: 700; text-decoration: none;">Sign Up</a></p>
             </div>
             <div id="auth-register" class="screen-hidden">
                 <h2>Create Account</h2>
@@ -432,14 +597,18 @@
                     <input type="password" id="reg-password" placeholder="••••••••">
                 </div>
                 <button class="btn btn-primary btn-block" id="register-btn">Create Account</button>
-                <p class="auth-switch">Already have an account? <a href="#" onclick="toggleAuth('login')">Login</a></p>
+                <p class="auth-switch" style="margin-top: 20px; text-align: center; font-size: 14px;">Already have an account? <a href="#" onclick="toggleAuth('login')" style="color: var(--primary); font-weight: 700; text-decoration: none;">Login</a></p>
             </div>
         </div>
     </div>
 
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="toast-container"></div>
+
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script type="module" src="app.js"></script>
     <script>
+        // UI Only Helpers
         function showAuthModal(type) {
             document.getElementById('auth-modal').classList.remove('screen-hidden');
             toggleAuth(type);
@@ -456,14 +625,7 @@
                 document.getElementById('auth-register').classList.remove('screen-hidden');
             }
         }
-        function showSection(id) {
-            document.querySelectorAll('.content-section').forEach(s => s.classList.add('screen-hidden'));
-            document.getElementById('section-' + id).classList.remove('screen-hidden');
-            document.getElementById('current-page').innerText = id.charAt(0).toUpperCase() + id.slice(1);
-
-            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-            event.currentTarget.classList.add('active');
-        }
+        // showSection is now handled in app.js
     </script>
 </body>
 </html>
