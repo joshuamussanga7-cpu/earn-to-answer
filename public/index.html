@@ -259,23 +259,50 @@
             <!-- Leaderboard Section -->
             <section id="section-leaderboard" class="content-section screen-hidden">
                 <div class="header-row">
-                    <h1>Top Earners</h1>
+                    <h1>Global Leaderboards</h1>
                     <p>See how you rank against the global community.</p>
                 </div>
-                <div class="card">
-                    <table class="history-table" style="width: 100%;">
-                        <thead>
-                            <tr>
-                                <th>Rank</th>
-                                <th>User</th>
-                                <th>Tasks</th>
-                                <th>Total Earned</th>
-                            </tr>
-                        </thead>
-                        <tbody id="leaderboard-body">
-                            <!-- Leaderboard data will be injected here -->
-                        </tbody>
-                    </table>
+
+                <div class="dashboard-grid" style="margin-top: 32px;">
+                    <!-- Earnings Leaderboard -->
+                    <div class="card">
+                        <div class="section-header">
+                            <h3><i class='bx bxs-badge-dollar' style="color: var(--success);"></i> Top Earners</h3>
+                        </div>
+                        <table class="history-table" style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th>Rank</th>
+                                    <th>User</th>
+                                    <th>Tasks</th>
+                                    <th>Earned</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leaderboard-body">
+                                <!-- Leaderboard data will be injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Affiliate Leaderboard -->
+                    <div class="card">
+                        <div class="section-header">
+                            <h3><i class='bx bxs-group' style="color: var(--primary);"></i> Top Affiliates</h3>
+                        </div>
+                        <table class="history-table" style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th>Rank</th>
+                                    <th>User</th>
+                                    <th>Referrals</th>
+                                    <th>Comm. Earned</th>
+                                </tr>
+                            </thead>
+                            <tbody id="affiliate-leaderboard-body">
+                                <!-- Affiliate leaderboard data will be injected here -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
 

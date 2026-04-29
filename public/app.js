@@ -41,6 +41,16 @@ const referralLinkInput = document.getElementById('referral-link');
 const leaderboardBody = document.getElementById('leaderboard-body');
 const historyBody = document.getElementById('history-body');
 
+// --- Helpers ---
+function generateReferralCode(length = 8) {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+}
+
 // --- Auth Logic ---
 
 registerBtn.addEventListener('click', async () => {
@@ -55,11 +65,28 @@ registerBtn.addEventListener('click', async () => {
 
     // Check for referral ID in URL
     const urlParams = new URLSearchParams(window.location.search);
-    const referredBy = urlParams.get('ref') || null;
+    const referredByCode = urlParams.get('ref') || null;
 
     try {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
+        const myReferralCode = generateReferralCode();
+
+        let referrerUid = null;
+        // If referred by someone (using their unique code), find their UID
+        if (referredByCode) {
+            const q = query(collection(db, "users"), where("referralCode", "==", referredByCode), limit(1));
+            const querySnapshot = await getDocs(q);
+            if (!querySnapshot.empty) {
+                referrerUid = querySnapshot.docs[0].id;
+
+                // Increment referrer's count
+                await updateDoc(doc(db, "users", referrerUid), {
+                    referralCount: increment(1)
+                });
+            }
+        }
+
         await setDoc(doc(db, "users", user.uid), {
             fullName: fullName,
             email: email,
@@ -69,20 +96,10 @@ registerBtn.addEventListener('click', async () => {
             totalTasksDone: 0,
             referralCount: 0,
             referralEarnings: 0,
-            referredBy: referredBy,
+            referralCode: myReferralCode,
+            referredBy: referrerUid,
             createdAt: new Date().toISOString()
         });
-
-        // If referred by someone, increment their referral count
-        if (referredBy) {
-            const referrerRef = doc(db, "users", referredBy);
-            const referrerSnap = await getDoc(referrerRef);
-            if (referrerSnap.exists()) {
-                await updateDoc(referrerRef, {
-                    referralCount: increment(1)
-                });
-            }
-        }
 
         alert("Account created successfully!");
         window.closeAuthModal();
@@ -135,7 +152,7 @@ onAuthStateChanged(auth, (user) => {
                 if (refCountText) refCountText.innerText = data.referralCount || 0;
                 if (refEarningsText) refEarningsText.innerText = (data.referralEarnings || 0).toFixed(2);
 
-                const refLink = `https://earntoanswer.com/join?ref=${user.uid}`;
+                const refLink = `${window.location.origin}/index.html?ref=${data.referralCode || user.uid}`;
                 if (referralLinkInput) referralLinkInput.value = refLink;
 
                 // Update Dashboard Referral Link
@@ -144,8 +161,9 @@ onAuthStateChanged(auth, (user) => {
             }
         });
 
-        // Load Leaderboard & History
+        // Load Leaderboards & History
         loadLeaderboard();
+        loadAffiliateLeaderboard();
         loadTransactionHistory(user.uid);
     } else {
         landingPage.classList.remove('screen-hidden');
@@ -316,7 +334,7 @@ window.filterTasks = (category, btn) => {
 async function loadLeaderboard() {
     if (!leaderboardBody) return;
 
-    const q = query(collection(db, "users"), orderBy("balance", "desc"), limit(10));
+    const q = query(collection(db, "users"), orderBy("balance", "desc"), limit(5));
     const querySnapshot = await getDocs(q);
 
     leaderboardBody.innerHTML = "";
@@ -328,11 +346,35 @@ async function loadLeaderboard() {
         row.className = "history-row";
         row.innerHTML = `
             <td>#${rank++}</td>
-            <td>${data.email.split('@')[0]}...</td>
+            <td>${data.fullName || 'User'}</td>
             <td>${data.totalTasksDone || 0}</td>
             <td style="font-weight: 800; color: var(--success);">$${(data.balance || 0).toFixed(2)}</td>
         `;
         leaderboardBody.appendChild(row);
+    });
+}
+
+async function loadAffiliateLeaderboard() {
+    const affBody = document.getElementById('affiliate-leaderboard-body');
+    if (!affBody) return;
+
+    const q = query(collection(db, "users"), orderBy("referralCount", "desc"), limit(5));
+    const querySnapshot = await getDocs(q);
+
+    affBody.innerHTML = "";
+    let rank = 1;
+
+    querySnapshot.forEach((userDoc) => {
+        const data = userDoc.data();
+        const row = document.createElement('tr');
+        row.className = "history-row";
+        row.innerHTML = `
+            <td>#${rank++}</td>
+            <td>${data.fullName || 'User'}</td>
+            <td>${data.referralCount || 0} Users</td>
+            <td style="font-weight: 800; color: var(--primary);">$${(data.referralEarnings || 0).toFixed(2)}</td>
+        `;
+        affBody.appendChild(row);
     });
 }
 
