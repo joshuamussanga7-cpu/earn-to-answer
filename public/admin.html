@@ -81,17 +81,61 @@
 
         // Load Global Stats
         async function loadStats() {
-            const usersSnap = await getDocs(collection(db, "users"));
-            document.getElementById('admin-total-users').innerText = usersSnap.size;
+            onSnapshot(collection(db, "users"), (snapshot) => {
+                document.getElementById('admin-total-users').innerText = snapshot.size;
+                let globalBal = 0;
+                snapshot.forEach(doc => globalBal += (doc.data().balance || 0));
+                document.getElementById('admin-global-bal').innerText = `$${globalBal.toFixed(2)}`;
+            });
 
-            let globalBal = 0;
-            usersSnap.forEach(doc => globalBal += (doc.data().balance || 0));
-            document.getElementById('admin-global-bal').innerText = `$${globalBal.toFixed(2)}`;
+            onSnapshot(query(collection(db, "payouts"), where("status", "==", "Paid")), (snapshot) => {
+                let totalPaid = 0;
+                snapshot.forEach(doc => totalPaid += (doc.data().amount || 0));
+                document.getElementById('admin-total-payouts').innerText = `$${totalPaid.toFixed(2)}`;
+            });
         }
 
-        // Load Withdrawal Requests (Placeholder for subcollection logic)
-        // In a real app, you'd query a global 'withdrawals' collection
+        // Load Withdrawal Requests
+        function loadPayoutRequests() {
+            const q = query(collection(db, "payouts"), where("status", "==", "Pending"), orderBy("timestamp", "asc"));
+            onSnapshot(q, (snapshot) => {
+                const body = document.getElementById('payout-requests-body');
+                document.getElementById('admin-pending-req').innerText = snapshot.size;
+                body.innerHTML = snapshot.empty ? "<tr><td colspan='4'>No pending requests.</td></tr>" : "";
+
+                snapshot.forEach((pDoc) => {
+                    const data = pDoc.data();
+                    const row = document.createElement('tr');
+                    row.className = "history-row";
+                    row.innerHTML = `
+                        <td>${data.email}</td>
+                        <td style="font-weight:700;">$${data.amount.toFixed(2)}</td>
+                        <td><code style="background:#f1f5f9; padding:4px 8px; border-radius:4px;">${data.address}</code></td>
+                        <td>
+                            <button class="btn btn-sm" onclick="approvePayout('${pDoc.id}')">Mark as Paid</button>
+                        </td>
+                    `;
+                    body.appendChild(row);
+                });
+            });
+        }
+
+        window.approvePayout = async (payoutId) => {
+            if (confirm("Confirm that you have sent the USDT to this address?")) {
+                try {
+                    await updateDoc(doc(db, "payouts", payoutId), {
+                        status: "Paid",
+                        paidAt: new Date().toISOString()
+                    });
+                    alert("Payout marked as paid!");
+                } catch (error) {
+                    alert(error.message);
+                }
+            }
+        };
+
         loadStats();
+        loadPayoutRequests();
     </script>
 </body>
 </html>

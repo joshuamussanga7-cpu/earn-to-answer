@@ -731,10 +731,25 @@ function syncUserData(data) {
         });
     }
 
-    // Dashboard Top Earners (Optional tiny list)
+    // Dashboard Top Earners
     loadDashboardLeaderboard();
+}
 
-    // ... rest of the sync logic ...
+async function loadDashboardLeaderboard() {
+    const list = document.getElementById('dashboard-leaderboard');
+    if (!list) return;
+    const q = query(collection(db, "users"), orderBy("balance", "desc"), limit(3));
+    const querySnapshot = await getDocs(q);
+    list.innerHTML = "";
+    querySnapshot.forEach((userDoc) => {
+        const data = userDoc.data();
+        list.innerHTML += `
+            <div class="status-row" style="margin-bottom: 8px;">
+                <span>${data.fullName || 'User'}</span>
+                <span style="color: var(--success); font-weight: 700;">$${(data.balance || 0).toFixed(2)}</span>
+            </div>`;
+    });
+}
 
     if (refCountText) refCountText.innerText = data.referralCount || 0;
     const refCountDash = document.getElementById('ref-count-dash');
