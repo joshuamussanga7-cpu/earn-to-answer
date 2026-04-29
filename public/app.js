@@ -150,6 +150,9 @@ onAuthStateChanged(auth, (user) => {
 
                 // Update Referral Stats
                 if (refCountText) refCountText.innerText = data.referralCount || 0;
+                const refCountDash = document.getElementById('ref-count-dash');
+                if (refCountDash) refCountDash.innerText = data.referralCount || 0;
+
                 if (refEarningsText) refEarningsText.innerText = (data.referralEarnings || 0).toFixed(2);
 
                 const refLink = `${window.location.origin}/index.html?ref=${data.referralCode || user.uid}`;

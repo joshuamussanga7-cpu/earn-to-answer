@@ -131,49 +131,36 @@
 
             <!-- Dashboard Section -->
             <section id="section-dashboard" class="content-section">
-                <div class="welcome-banner">
-                    <div class="banner-text">
-                        <h2>Good Morning, <span id="user-name-display">Earner</span>! 👋</h2>
-                        <p>You have 12 new high-paying surveys available today.</p>
-                    </div>
-                    <button class="btn btn-white" onclick="showSection('tasks')">View Tasks</button>
-                </div>
-
-                <div class="stats-row">
-                    <div class="stat-card">
-                        <div class="s-icon purple"><i class='bx bxs-wallet'></i></div>
-                        <div class="s-info">
-                            <p>Current Balance</p>
-                            <h3>$<span id="balance-big">0.00</span></h3>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="s-icon green"><i class='bx bxs-check-shield'></i></div>
-                        <div class="s-info">
-                            <p>Tasks Completed</p>
-                            <h3><span id="tasks-count">0</span></h3>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="s-icon orange"><i class='bx bxs-time-five'></i></div>
-                        <div class="s-info">
-                            <p>Pending Payout</p>
-                            <h3>Next Sunday</h3>
-                        </div>
-                    </div>
-                </div>
-
                 <div class="dashboard-grid">
-                    <div class="main-tasks">
+
+                    <!-- Welcome Banner (8 cols) -->
+                    <div class="welcome-banner">
+                        <div class="banner-text">
+                            <h2>Good Morning, <span id="user-name-display">Earner</span>! 👋</h2>
+                            <p>Ready to earn some USDT today? You have new tasks waiting.</p>
+                        </div>
+                        <button class="btn btn-white" onclick="showSection('tasks')">Start Earning</button>
+                    </div>
+
+                    <!-- Balance Card (4 cols) -->
+                    <div class="stat-card-bento">
+                        <div class="s-icon purple"><i class='bx bxs-wallet'></i></div>
+                        <p style="color: var(--text-muted); font-size: 14px; font-weight: 600;">Total Balance</p>
+                        <h3 style="font-size: 36px; font-weight: 800;">$<span id="balance-big">0.00</span></h3>
+                        <span style="font-size: 11px; color: var(--success); font-weight: 700;">+ $0.00 today</span>
+                    </div>
+
+                    <!-- Tasks Mini-list (8 cols) -->
+                    <div class="main-tasks-bento">
                         <div class="section-header">
-                            <h3>Featured Tasks</h3>
-                            <a href="#" onclick="showSection('tasks')">See All</a>
+                            <h3>Quick Tasks</h3>
+                            <a href="#" onclick="showSection('tasks')">View All</a>
                         </div>
                         <div class="task-list-mini">
                             <div class="task-row">
                                 <div class="t-icon">📺</div>
                                 <div class="t-details">
-                                    <h4>Watch Sponsor Ads</h4>
+                                    <h4>Sponsor Ads</h4>
                                     <p id="video-progress">Progress: 0/10 Videos</p>
                                 </div>
                                 <div class="t-reward">+$0.10</div>
@@ -182,22 +169,43 @@
                             <div class="task-row">
                                 <div class="t-icon">📝</div>
                                 <div class="t-details">
-                                    <h4>Daily Feedback Survey</h4>
-                                    <p>Est. time: 2 mins</p>
+                                    <h4>Daily Survey</h4>
+                                    <p>Est. 2 mins</p>
                                 </div>
                                 <div class="t-reward">+$0.50</div>
                                 <button class="btn btn-primary btn-sm" onclick="startSurveyTask()">Start</button>
                             </div>
                         </div>
                     </div>
-                    <div class="referral-box">
-                        <h3>Refer & Earn 10%</h3>
-                        <p>Share your link and earn 10% of whatever your friends earn, for life!</p>
-                        <div class="copy-link">
-                            <input type="text" value="earntoanswer.com/ref/user123" readonly>
-                            <button><i class='bx bx-copy'></i></button>
+
+                    <!-- Secondary Stats Column (4 cols) -->
+                    <div class="side-stats-bento">
+                        <div class="stat-card-bento" style="width: 100%; height: 50%;">
+                            <div class="s-icon green"><i class='bx bxs-check-shield'></i></div>
+                            <p style="color: var(--text-muted); font-size: 13px; font-weight: 600;">Completed</p>
+                            <h3 id="tasks-count">0</h3>
+                        </div>
+                        <div class="stat-card-bento" style="width: 100%; height: 50%;">
+                            <div class="s-icon orange"><i class='bx bxs-group'></i></div>
+                            <p style="color: var(--text-muted); font-size: 13px; font-weight: 600;">Referrals</p>
+                            <h3 id="ref-count-dash">0</h3>
                         </div>
                     </div>
+
+                    <!-- Referral Box (Full 12 cols) -->
+                    <div class="referral-box-bento">
+                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 40px;">
+                            <div>
+                                <h3>Invite Friends & Earn 10% Commission</h3>
+                                <p style="opacity: 0.8; font-size: 14px;">Share your unique link and earn 10% of their earnings for life. The more they earn, the more you make!</p>
+                            </div>
+                            <div class="copy-link" style="min-width: 400px;">
+                                <input type="text" id="referral-link-dash" value="Generating link..." readonly>
+                                <button onclick="copyReferralLink()"><i class='bx bx-copy'></i></button>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </section>
 
