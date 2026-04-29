@@ -821,7 +821,6 @@ onAuthStateChanged(auth, (user) => {
     }
 });
 
-// ... existing syncUserData logic ...
 function syncUserData(data) {
     userEmailSidebar.innerText = data.email;
     userAvatar.innerText = (data.fullName ? data.fullName[0] : data.email[0]).toUpperCase();
@@ -835,7 +834,6 @@ function syncUserData(data) {
 
     const progress = data.videoTasksCompleted || 0;
     if (videoProgressText) videoProgressText.innerText = `Progress: ${progress}/10 Videos`;
-    if (tasksCountSpan) tasksCountSpan.innerText = data.totalTasksDone || 0;
 
     // Dashboard Achievements Mini-list
     const dashAch = document.getElementById('dashboard-achievements');
@@ -849,30 +847,13 @@ function syncUserData(data) {
 
     // Dashboard Top Earners
     loadDashboardLeaderboard();
-}
-
-async function loadDashboardLeaderboard() {
-    const list = document.getElementById('dashboard-leaderboard');
-    if (!list) return;
-    const q = query(collection(db, "users"), orderBy("balance", "desc"), limit(3));
-    const querySnapshot = await getDocs(q);
-    list.innerHTML = "";
-    querySnapshot.forEach((userDoc) => {
-        const data = userDoc.data();
-        list.innerHTML += `
-            <div class="status-row" style="margin-bottom: 8px;">
-                <span>${data.fullName || 'User'}</span>
-                <span style="color: var(--success); font-weight: 700;">$${(data.balance || 0).toFixed(2)}</span>
-            </div>`;
-    });
-}
 
     if (refCountText) refCountText.innerText = data.referralCount || 0;
     const refCountDash = document.getElementById('ref-count-dash');
     if (refCountDash) refCountDash.innerText = data.referralCount || 0;
     if (refEarningsText) refEarningsText.innerText = (data.referralEarnings || 0).toFixed(2);
 
-    const refLink = `${window.location.origin}/index.html?ref=${data.referralCode || auth.currentUser.uid}`;
+    const refLink = `${window.location.origin}/index.html?ref=${data.referralCode || (auth.currentUser ? auth.currentUser.uid : '')}`;
     if (referralLinkInput) referralLinkInput.value = refLink;
     const dashRefInput = document.getElementById('referral-link-dash');
     if (dashRefInput) dashRefInput.value = refLink;
@@ -892,4 +873,20 @@ async function loadDashboardLeaderboard() {
     const canSpin = !lastSpin || (new Date() - lastSpin > 24 * 60 * 60 * 1000);
     const wheelStatus = document.getElementById('wheel-status');
     if (wheelStatus) wheelStatus.innerText = canSpin ? "SPIN NOW" : "LOCKED";
+}
+
+async function loadDashboardLeaderboard() {
+    const list = document.getElementById('dashboard-leaderboard');
+    if (!list) return;
+    const q = query(collection(db, "users"), orderBy("balance", "desc"), limit(3));
+    const querySnapshot = await getDocs(q);
+    list.innerHTML = "";
+    querySnapshot.forEach((userDoc) => {
+        const data = userDoc.data();
+        list.innerHTML += `
+            <div class="status-row" style="margin-bottom: 8px;">
+                <span>${data.fullName || 'User'}</span>
+                <span style="color: var(--success); font-weight: 700;">$${(data.balance || 0).toFixed(2)}</span>
+            </div>`;
+    });
 }
