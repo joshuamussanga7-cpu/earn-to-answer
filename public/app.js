@@ -610,17 +610,13 @@ function updateLevelUI(tasksCount) {
     const xp = tasksCount % 50;
     const progress = (xp / 50) * 100;
 
-    const levelNum = document.getElementById('level-num');
-    const levelProgress = document.getElementById('level-progress');
-    const levelName = document.getElementById('level-name');
+    const levelNum = document.getElementById('user-level');
+    const levelBar = document.getElementById('level-bar');
+    const levelPercent = document.getElementById('level-percent');
 
     if (levelNum) levelNum.innerText = level;
-    if (levelProgress) levelProgress.style.width = `${progress}%`;
-
-    if (levelName) {
-        const titles = ["Rookie", "Novice", "Pro", "Expert", "Master", "Legend"];
-        levelName.innerText = titles[Math.min(level - 1, titles.length - 1)];
-    }
+    if (levelBar) levelBar.style.width = `${progress}%`;
+    if (levelPercent) levelPercent.innerText = `${Math.floor(progress)}%`;
 }
 
 // Notification Bell Toggle
@@ -634,6 +630,37 @@ if (bell) {
     };
 }
 document.onclick = () => { if (dropdown) dropdown.style.display = 'none'; };
+
+window.clearNotifications = () => {
+    const list = document.getElementById('notif-list');
+    if (list) {
+        list.innerHTML = '<div class="notif-item"><p style="font-size:12px; color:var(--text-muted); padding:20px; text-align:center;">No notifications yet</p></div>';
+        const dot = document.getElementById('notif-dot');
+        if (dot) dot.style.display = 'none';
+    }
+};
+
+window.copyReferralLink = () => {
+    const linkInput = document.getElementById('referral-link');
+    const dashLinkInput = document.getElementById('referral-link-dash');
+    const link = (linkInput && linkInput.value) || (dashLinkInput && dashLinkInput.value);
+
+    if (link) {
+        navigator.clipboard.writeText(link).then(() => {
+            showToast("Referral link copied!");
+        }).catch(err => {
+            console.error('Failed to copy: ', err);
+            // Fallback for browsers that don't support clipboard API
+            const tempInput = document.createElement("input");
+            tempInput.value = link;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand("copy");
+            document.body.removeChild(tempInput);
+            showToast("Referral link copied!");
+        });
+    }
+};
 
 // --- Profile, Support & Payouts ---
 const updateProfileBtn = document.getElementById('update-profile-btn');
