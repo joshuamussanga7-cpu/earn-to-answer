@@ -79,6 +79,7 @@
                 <span>EarnToAnswer</span>
             </div>
             <ul class="nav-links">
+                <li class="nav-label">Main Menu</li>
                 <li class="nav-item">
                     <a class="nav-link active" onclick="showSection('dashboard')">
                         <i class='bx bxs-grid-alt'></i> Dashboard
@@ -86,9 +87,16 @@
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" onclick="showSection('tasks')">
-                        <i class='bx bxs-collection'></i> Offerwalls
+                        <i class='bx bxs-collection'></i> Tasks Center
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link" onclick="showSection('leaderboard')">
+                        <i class='bx bxs-trophy'></i> Leaderboard
+                    </a>
+                </li>
+
+                <li class="nav-label">Earnings</li>
                 <li class="nav-item">
                     <a class="nav-link" onclick="showSection('wallet')">
                         <i class='bx bxs-wallet-alt'></i> Withdraw
@@ -104,19 +112,16 @@
                         <i class='bx bx-history'></i> History
                     </a>
                 </li>
+
+                <li class="nav-label">Account</li>
                 <li class="nav-item">
-                    <a class="nav-link" onclick="showSection('leaderboard')">
-                        <i class='bx bxs-trophy'></i> Leaderboard
+                    <a class="nav-link" onclick="showSection('profile')">
+                        <i class='bx bxs-user-circle'></i> Profile
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" onclick="showSection('achievements')">
                         <i class='bx bxs-award'></i> Achievements
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" onclick="showSection('profile')">
-                        <i class='bx bxs-user-circle'></i> Profile
                     </a>
                 </li>
                 <li class="nav-item">
@@ -193,35 +198,101 @@
                     </div>
 
                     <!-- Balance Card (4 cols) -->
-                    <div class="stat-card-bento">
+                    <div class="stat-card-bento main-balance">
                         <div class="s-icon purple"><i class='bx bxs-wallet'></i></div>
-                        <p style="color: var(--text-muted); font-size: 14px; font-weight: 600;">Total Balance</p>
-                        <h3 style="font-size: 36px; font-weight: 800;">$<span id="balance-big">0.00</span></h3>
-                        <span style="font-size: 11px; color: var(--success); font-weight: 700;">+ $0.00 today</span>
+                        <p class="stat-label">Total Balance</p>
+                        <h3 class="stat-value">$<span id="balance-big">0.00</span></h3>
+                        <div class="stat-trend positive">
+                            <i class='bx bx-trending-up'></i>
+                            <span>+ $0.00 today</span>
+                        </div>
+                        <button class="btn btn-white btn-sm" onclick="showSection('wallet')" style="margin-top: 20px; width: 100%;">Withdraw Funds</button>
                     </div>
 
-                    <!-- Tasks Mini-list (8 cols) -->
-                    <div class="main-tasks-bento">
+                    <!-- Weekly Analytics (7 cols) -->
+                    <div class="card bento-item" style="grid-column: span 7;">
                         <div class="section-header">
-                            <h3>Weekly Analytics</h3>
-                            <span style="font-size: 12px; color: var(--text-muted);">Earnings (USDT)</span>
+                            <h3><i class='bx bx-line-chart' style="color: var(--primary);"></i> Weekly Analytics</h3>
+                            <span class="text-muted">Earnings (USDT)</span>
                         </div>
-                        <div style="height: 200px; width: 100%; margin-top: 20px;">
+                        <div style="height: 220px; width: 100%; margin-top: 20px;">
                             <canvas id="earningsChart"></canvas>
                         </div>
                     </div>
 
-                    <!-- Secondary Stats Column (4 cols) -->
-                    <div class="side-stats-bento">
-                        <div class="stat-card-bento" style="width: 100%; height: 50%;">
-                            <div class="s-icon green"><i class='bx bxs-check-shield'></i></div>
-                            <p style="color: var(--text-muted); font-size: 13px; font-weight: 600;">Completed</p>
-                            <h3 id="tasks-count">0</h3>
+                    <!-- Featured Tasks (5 cols) -->
+                    <div class="card bento-item" style="grid-column: span 5;">
+                        <div class="section-header">
+                            <h3><i class='bx bx-star' style="color: var(--warning);"></i> Featured Tasks</h3>
                         </div>
-                        <div class="stat-card-bento" style="width: 100%; height: 50%; cursor: pointer;" onclick="openWheel()">
-                            <div class="s-icon orange"><i class='bx bxs-color-fill'></i></div>
-                            <p style="color: var(--text-muted); font-size: 13px; font-weight: 600;">Fortune Wheel</p>
-                            <h3 id="wheel-status">SPIN NOW</h3>
+                        <div class="quick-tasks-list">
+                            <div class="quick-task-item" onclick="showSection('tasks')">
+                                <div class="qt-icon">📺</div>
+                                <div class="qt-info">
+                                    <p>Watch Ads</p>
+                                    <span>Earn $0.10</span>
+                                </div>
+                                <i class='bx bx-chevron-right'></i>
+                            </div>
+                            <div class="quick-task-item" onclick="showSection('tasks')">
+                                <div class="qt-icon">📝</div>
+                                <div class="qt-info">
+                                    <p>Daily Survey</p>
+                                    <span>Earn $0.50</span>
+                                </div>
+                                <i class='bx bx-chevron-right'></i>
+                            </div>
+                            <div class="quick-task-item" onclick="openWheel()">
+                                <div class="qt-icon">🎡</div>
+                                <div class="qt-info">
+                                    <p>Fortune Wheel</p>
+                                    <span>Win up to $1.00</span>
+                                </div>
+                                <i class='bx bx-chevron-right'></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Achievement Progress (4 cols) -->
+                    <div class="stat-card-bento" style="grid-column: span 4;">
+                        <div class="section-header">
+                            <h3>Achievements</h3>
+                        </div>
+                        <div id="dashboard-achievements" class="mini-badge-list">
+                            <!-- Injected by JS -->
+                        </div>
+                        <button class="btn-text btn-sm" onclick="showSection('achievements')" style="margin-top: 12px; color: var(--primary);">View All Badges <i class='bx bx-right-arrow-alt'></i></button>
+                    </div>
+
+                    <!-- Top Earners Snippet (4 cols) -->
+                    <div class="stat-card-bento" style="grid-column: span 4;">
+                        <div class="section-header">
+                            <h3>Top Earners</h3>
+                        </div>
+                        <div id="dashboard-leaderboard" class="mini-leaderboard">
+                            <!-- Injected by JS -->
+                        </div>
+                        <button class="btn-text btn-sm" onclick="showSection('leaderboard')" style="margin-top: 12px; color: var(--primary);">Full Rankings <i class='bx bx-right-arrow-alt'></i></button>
+                    </div>
+
+                    <!-- System Status (4 cols) -->
+                    <div class="stat-card-bento" style="grid-column: span 4;">
+                        <div class="section-header">
+                            <h3>Platform Status</h3>
+                        </div>
+                        <div class="status-items">
+                            <div class="status-row">
+                                <span>Network</span>
+                                <span class="status-pill online">TRC-20</span>
+                            </div>
+                            <div class="status-row">
+                                <span>Payouts</span>
+                                <span class="status-pill active">Sundays</span>
+                            </div>
+                            <div class="status-row">
+                                <span>Security</span>
+                                <span class="status-pill secure">SSL 256-bit</span>
+                            </div>
                         </div>
                     </div>
 

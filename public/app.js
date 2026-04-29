@@ -706,6 +706,7 @@ onAuthStateChanged(auth, (user) => {
     }
 });
 
+// ... existing syncUserData logic ...
 function syncUserData(data) {
     userEmailSidebar.innerText = data.email;
     userAvatar.innerText = (data.fullName ? data.fullName[0] : data.email[0]).toUpperCase();
@@ -719,6 +720,21 @@ function syncUserData(data) {
 
     const progress = data.videoTasksCompleted || 0;
     videoProgressText.innerText = `Progress: ${progress}/10 Videos`;
+
+    // Dashboard Achievements Mini-list
+    const dashAch = document.getElementById('dashboard-achievements');
+    if (dashAch) {
+        dashAch.innerHTML = '';
+        achievements.slice(0, 4).forEach(ach => {
+            const unlocked = ach.condition(data);
+            dashAch.innerHTML += `<div class="mini-badge ${unlocked ? 'unlocked' : ''}" title="${ach.title}"><i class='bx ${ach.icon}'></i></div>`;
+        });
+    }
+
+    // Dashboard Top Earners (Optional tiny list)
+    loadDashboardLeaderboard();
+
+    // ... rest of the sync logic ...
 
     if (refCountText) refCountText.innerText = data.referralCount || 0;
     const refCountDash = document.getElementById('ref-count-dash');
