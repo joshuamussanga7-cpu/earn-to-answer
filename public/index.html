@@ -9,8 +9,11 @@
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- PropellerAds Integration (Placeholder) -->
-    <!-- <script>(function(s,u,z,p){s.src=u,s.setAttribute('data-zone',z),p.appendChild(s);})(document.createElement('script'),'https://sdk.propellerads.com/auth/script.js', 'YOUR_ZONE_ID', document.documentElement)</script> -->
+    <!-- PropellerAds/Adsterra Integration -->
+    <!-- PropellerAds -->
+    <script>(function(s,u,z,p){s.src=u,s.setAttribute('data-zone',z),p.appendChild(s);})(document.createElement('script'),'https://inklinkor.com/tag.min.js', 'YOUR_PROPELLER_ZONE_ID', document.documentElement)</script>
+    <!-- Adsterra Social Bar -->
+    <!-- <script type='text/javascript' src='//pl12345678.highperformancegate.com/ab/cd/ef/abcdef0123456789.js'></script> -->
 </head>
 <body class="auth-mode"> <!-- class toggles based on login state -->
 
@@ -127,6 +130,14 @@
                 <li class="nav-item">
                     <a class="nav-link" onclick="showSection('support')">
                         <i class='bx bxs-help-circle'></i> Support
+                    </a>
+                </li>
+
+                <!-- Admin Section (Hidden by default) -->
+                <li class="nav-label admin-only screen-hidden">Administration</li>
+                <li class="nav-item admin-only screen-hidden">
+                    <a class="nav-link" onclick="showSection('admin')">
+                        <i class='bx bxs-shield-quarter'></i> Security Center
                     </a>
                 </li>
             </ul>
@@ -445,11 +456,20 @@
                         <div class="t-icon-large">📺</div>
                         <h3>Watch Ads</h3>
                         <p>Watch 10 short sponsor videos to earn.</p>
+                        <div class="video-progress-wrapper" style="width: 100%; margin: 15px 0;">
+                            <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; margin-bottom: 4px;">
+                                <span id="video-progress">Progress: 0/10</span>
+                                <span id="video-progress-percent">0%</span>
+                            </div>
+                            <div style="width: 100%; height: 6px; background: rgba(0,0,0,0.05); border-radius: 10px; overflow: hidden;">
+                                <div id="video-progress-bar" style="width: 0%; height: 100%; background: var(--primary); transition: width 0.4s;"></div>
+                            </div>
+                        </div>
                         <div class="t-meta">
                             <span><i class='bx bx-time'></i> 2 min</span>
                             <span class="t-amt">$0.10</span>
                         </div>
-                        <button class="btn btn-primary btn-block" onclick="startVideoTask()">Start Watching</button>
+                        <button class="btn btn-primary btn-block" id="watch-video-btn" onclick="startVideoTask()">Start Watching</button>
                     </div>
 
                     <!-- Survey Card -->
@@ -533,6 +553,13 @@
                             <input type="text" id="profile-name" placeholder="Your Name">
                         </div>
                         <div class="input-group">
+                            <label>Account ID</label>
+                            <div style="display:flex; gap:8px;">
+                                <input type="text" id="profile-id" readonly style="opacity:0.6; flex:1;">
+                                <button class="btn-icon" onclick="copyToClipboard('profile-id')" title="Copy ID"><i class='bx bx-copy'></i></button>
+                            </div>
+                        </div>
+                        <div class="input-group">
                             <label>Email Address</label>
                             <input type="email" id="profile-email" readonly style="opacity:0.6;">
                         </div>
@@ -562,37 +589,98 @@
             <section id="section-support" class="content-section screen-hidden">
                 <div class="header-row">
                     <h1>Support Center</h1>
-                    <p>Need help? Check our FAQs or contact our team.</p>
+                    <p>Have questions? We're here to help you 24/7.</p>
                 </div>
                 <div class="dashboard-grid">
-                    <div class="card" style="grid-column: span 7;">
-                        <h3>Contact Support</h3>
-                        <div class="input-group" style="margin-top:20px;">
-                            <label>Subject</label>
-                            <select id="support-subject" style="width:100%; padding:12px; border-radius:12px; border:1px solid #e2e8f0;">
-                                <option>Payment Issue</option>
-                                <option>Task Not Credited</option>
-                                <option>Account Access</option>
-                                <option>Other</option>
-                            </select>
+                    <div class="card" style="grid-column: span 8;">
+                        <h3>Frequently Asked Questions</h3>
+                        <div class="faq-list" style="margin-top: 20px;">
+                            <div class="faq-item" style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid var(--border-color);">
+                                <h4 style="color: var(--primary); margin-bottom: 8px;">When do I get paid?</h4>
+                                <p style="font-size: 14px; color: var(--text-muted);">Payouts are processed every Sunday at 00:00 UTC. Minimum withdrawal is $10.00 USDT.</p>
+                            </div>
+                            <div class="faq-item" style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid var(--border-color);">
+                                <h4 style="color: var(--primary); margin-bottom: 8px;">Which network is used for USDT?</h4>
+                                <p style="font-size: 14px; color: var(--text-muted);">We exclusively use the TRC-20 (Tron) network for low fees and fast transactions.</p>
+                            </div>
+                            <div class="faq-item">
+                                <h4 style="color: var(--primary); margin-bottom: 8px;">My video didn't count?</h4>
+                                <p style="font-size: 14px; color: var(--text-muted);">Ensure you have a stable connection and are not using a VPN/Proxy. Fraudulent skipping will void the reward.</p>
+                            </div>
                         </div>
-                        <div class="input-group">
-                            <label>Message</label>
-                            <textarea id="support-msg" rows="5" style="width:100%; padding:12px; border-radius:12px; border:1px solid #e2e8f0;" placeholder="Describe your issue..."></textarea>
-                        </div>
-                        <button class="btn btn-primary" onclick="submitTicket()">Submit Ticket</button>
                     </div>
-                    <div class="card" style="grid-column: span 5;">
-                        <h3>Quick FAQ</h3>
-                        <div style="margin-top:20px;">
-                            <details style="margin-bottom:12px; cursor:pointer;">
-                                <summary style="font-weight:700;">When are payments sent?</summary>
-                                <p style="font-size:13px; color:var(--text-muted); padding-top:8px;">Payments are processed every Sunday at 00:00 UTC once you reach the $10 minimum.</p>
-                            </details>
-                            <details style="margin-bottom:12px; cursor:pointer;">
-                                <summary style="font-weight:700;">Can I use multiple accounts?</summary>
-                                <p style="font-size:13px; color:var(--text-muted); padding-top:8px;">No, multiple accounts will result in a permanent ban of all associated wallets.</p>
-                            </details>
+                    <div class="card" style="grid-column: span 4;">
+                        <h3>Contact Us</h3>
+                        <p style="font-size: 14px; color: var(--text-muted); margin: 15px 0;">Need direct assistance?</p>
+                        <a href="https://t.me/earntoanswer_support" target="_blank" class="btn btn-primary btn-block" style="text-decoration: none; text-align: center; display: block;">
+                            <i class='bx bxl-telegram'></i> Telegram Support
+                        </a>
+                        <button class="btn btn-outline btn-block" style="margin-top: 12px;" onclick="showToast('Email support: support@earntoanswer.com', 'info')">
+                            <i class='bx bx-envelope'></i> Email Us
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Admin Security Center -->
+            <section id="section-admin" class="content-section screen-hidden">
+                <div class="header-row">
+                    <h1>Security & Admin Center</h1>
+                    <p>Monitor platform activity, manage payouts, and investigate suspicious behavior.</p>
+                </div>
+
+                <div class="dashboard-grid">
+                    <!-- Platform Stats -->
+                    <div id="admin-stats-grid" class="stats-row" style="grid-column: span 12; display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
+                        <!-- Injected by JS -->
+                    </div>
+
+                    <div class="card" style="grid-column: span 12;">
+                        <div class="section-header">
+                            <h3><i class='bx bx-search-alt' style="color: var(--primary);"></i> User Investigation</h3>
+                            <div class="search-bar" style="max-width: 300px; position: relative;">
+                                <i class='bx bx-search' style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+                                <input type="text" id="admin-user-search" placeholder="Search by Email or ID..." style="width: 100%; padding: 10px 10px 10px 35px; border-radius: 8px; border: 1px solid var(--border-color);">
+                            </div>
+                        </div>
+                        <div class="admin-table-wrapper" style="margin-top: 20px; overflow-x: auto;">
+                            <table class="history-table" style="width: 100%; min-width: 800px;">
+                                <thead>
+                                    <tr>
+                                        <th>User</th>
+                                        <th>IP Address</th>
+                                        <th>Balance</th>
+                                        <th>Last Seen</th>
+                                        <th>Status</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-users-list">
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="card" style="grid-column: span 12;">
+                        <div class="section-header">
+                            <h3>Pending Payouts</h3>
+                        </div>
+                        <div class="admin-table-wrapper" style="margin-top: 20px;">
+                            <table class="history-table" style="width: 100%;">
+                                <thead>
+                                    <tr>
+                                        <th>User ID</th>
+                                        <th>Wallet Address</th>
+                                        <th>Amount</th>
+                                        <th>Request Date</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-payouts-list">
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -631,6 +719,33 @@
                 <canvas id="wheel" width="300" height="300"></canvas>
             </div>
             <button class="btn btn-primary btn-lg" id="spin-btn" onclick="spinWheel()">Spin for FREE</button>
+        </div>
+    </div>
+
+    <!-- Survey Modal -->
+    <div id="survey-modal" class="modal-overlay screen-hidden">
+        <div class="modal-card" style="max-width: 500px;">
+            <div id="survey-step-1">
+                <h2>Quick Daily Survey</h2>
+                <p>Answer 3 simple questions to earn <strong>$0.50 USDT</strong>.</p>
+                <div class="input-group" style="margin-top:20px;">
+                    <label>1. How did you hear about us?</label>
+                    <select class="survey-input" style="width:100%; padding:12px; border-radius:10px; border:1px solid #e2e8f0;">
+                        <option>Friend/Referral</option>
+                        <option>Social Media</option>
+                        <option>Google Search</option>
+                        <option>Other</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>2. Which earning method do you prefer?</label>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                        <button class="btn btn-outline btn-sm survey-opt" onclick="selectSurveyOpt(this)">Watching Ads</button>
+                        <button class="btn btn-outline btn-sm survey-opt" onclick="selectSurveyOpt(this)">Surveys</button>
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-block" onclick="completeSurvey()">Submit & Claim Reward</button>
+            </div>
         </div>
     </div>
 
@@ -679,6 +794,52 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script type="module" src="app.js"></script>
     <script>
+        // Ad Network Integration Hook
+        window.showAdNetworkInterstitial = function(onComplete) {
+            console.log("Ad Network: Requesting Interstitial...");
+
+            // Logic to call real Ad Network SDK (e.g., PropellerAds)
+            // if (typeof propellerShowAd === 'function') {
+            //     propellerShowAd().then(onComplete);
+            //     return;
+            // }
+
+            // Simulation Fallback with human-like interaction requirement
+
+            let timeLeft = 5;
+            loader.innerHTML = `
+                <div class="ad-content-box" style="text-align:center; padding:40px; background:rgba(255,255,255,0.05); border-radius:24px; border:1px solid rgba(255,255,255,0.1); max-width:400px; width:90%;">
+                    <div class="spinner" style="width:60px; height:60px; border:4px solid var(--primary); border-top-color:transparent; border-radius:50%; animation:spin 1s linear infinite; margin: 0 auto 24px;"></div>
+                    <h2 style="margin-bottom:8px;">Premium Sponsor Ad</h2>
+                    <p style="opacity:0.7; margin-bottom:24px; font-size:14px;">Your reward is being prepared...</p>
+                    <div id="ad-timer-display" style="font-size:18px; font-weight:700; color:var(--primary);">Closing in ${timeLeft}s</div>
+                </div>
+                <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+            `;
+            document.body.appendChild(loader);
+
+            const timer = setInterval(() => {
+                timeLeft--;
+                const display = document.getElementById('ad-timer-display');
+                if (display) display.innerText = `Closing in ${timeLeft}s`;
+
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    const box = loader.querySelector('.ad-content-box');
+                    box.innerHTML = `
+                        <i class='bx bxs-check-circle' style="font-size:64px; color:var(--success); margin-bottom:16px;"></i>
+                        <h2>Ad Complete!</h2>
+                        <p style="opacity:0.7; margin-bottom:24px;">You can now claim your reward.</p>
+                        <button id="close-ad-btn" class="btn btn-primary btn-block">Claim Reward</button>
+                    `;
+                    document.getElementById('close-ad-btn').onclick = () => {
+                        document.body.removeChild(loader);
+                        onComplete();
+                    };
+                }
+            }, 1000);
+        };
+
         // UI Only Helpers
         function showAuthModal(type) {
             document.getElementById('auth-modal').classList.remove('screen-hidden');
