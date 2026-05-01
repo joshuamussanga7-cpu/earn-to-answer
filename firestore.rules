@@ -14,28 +14,25 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // Helper to check if only specific fields are being modified
-    function onlyModifies(fields) {
-      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields);
-    }
-
     match /users/{userId} {
       allow read: if isAdmin() || isOwner(userId);
-
-      // Registration: allow initial creation
       allow create: if isOwner(userId) && request.resource.data.role == 'user' && request.resource.data.balance == 0;
 
-      // Update: Users can only update specific profile fields. Balance/Role/Banned are protected.
+      // Profile updates
       allow update: if isAdmin()
                     || (isOwner(userId)
                         && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['balance', 'role', 'isBanned', 'referralEarnings', 'referralCount'])
                         && resource.data.isBanned == false);
 
-      // Special rule: allow incrementing balance ONLY if it's a small controlled amount (Simulated validation)
-      // In a production app, this should be handled by Cloud Functions.
+      // Controlled updates for Rewards & Promo Codes
       allow update: if isOwner(userId)
-                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['balance', 'videoTasksCompleted', 'totalTasksDone', 'lastCheckIn', 'lastWheelSpin', 'checkInStreak', 'lastSurveyDate', 'completedSocialTasks'])
-                    && (request.resource.data.balance - resource.data.balance) <= 1.0;
+                    && resource.data.isBanned == false
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                        'balance', 'totalXP', 'totalVideosWatched', 'videoTasksCompleted',
+                        'totalTasksDone', 'lastCheckIn', 'lastWheelSpin', 'checkInStreak',
+                        'lastSurveyDate', 'completedSocialTasks', 'usedPromos', 'fcmToken', 'walletAddress'
+                    ])
+                    && (request.resource.data.balance - resource.data.balance) <= 5.0;
 
       match /transactions/{txId} {
         allow read: if isAdmin() || isOwner(userId);
@@ -44,18 +41,28 @@ service cloud.firestore {
 
       match /notifications/{notifId} {
         allow read: if isOwner(userId);
-        allow update: if isOwner(userId) && onlyModifies(['read']);
+        allow update: if isOwner(userId);
         allow delete: if isOwner(userId);
       }
     }
 
     match /payouts/{payoutId} {
-      allow create: if isSignedIn()
-                    && request.resource.data.uid == request.auth.uid
-                    && request.resource.data.status == 'Pending'
-                    && request.resource.data.amount >= 10.0;
-      allow read: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow read: if isSignedIn();
       allow update: if isAdmin();
+    }
+
+    match /promo_codes/{code} {
+      allow read: if isSignedIn();
+    }
+
+    match /custom_tasks/{taskId} {
+      allow read: if isSignedIn();
+    }
+
+    match /audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin();
     }
   }
 }

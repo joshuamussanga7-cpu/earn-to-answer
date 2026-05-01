@@ -2,6 +2,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, collection, query, orderBy, limit, getDocs, increment, addDoc, serverTimestamp, where, arrayUnion, deleteDoc, runTransaction } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
+
 const firebaseConfig = {
   apiKey: "AIzaSyBB_J-33kRosjVKdKa0FDmIWg04pTtU5CY",
   authDomain: "earn-to-answer-b7cd0.firebaseapp.com",
@@ -16,6 +18,36 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const messaging = getMessaging(app);
+
+// --- FCM Logic ---
+async function requestNotificationPermission(uid) {
+    try {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+            const token = await getToken(messaging, {
+                vapidKey: 'BGErNq7H-3v3vW4v4v4v4v4v4v4v4v4v4v4v4v4v4v4' // Placeholder: User needs to replace with actual VAPID key
+            });
+            if (token) {
+                await updateDoc(doc(db, "users", uid), { fcmToken: token });
+                console.log("FCM Token saved");
+            }
+        }
+    } catch (e) {
+        console.warn("FCM permission denied or error:", e);
+    }
+}
+
+onMessage(messaging, (payload) => {
+    console.log("Message received:", payload);
+    showToast(`${payload.notification.title}: ${payload.notification.body}`, "info");
+    if (payload.data && payload.data.type === 'balance_update') {
+        // Force refresh balance if needed, though onSnapshot handles it
+    }
+});
+
+// Add Chart.js import (assuming it's loaded via CDN in HTML, otherwise use local or npm)
+// <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> in index.html
 
 // --- Platform Configuration ---
 const PLATFORM_CONFIG = {
@@ -54,6 +86,8 @@ const userAvatar = document.getElementById('user-avatar');
 const themeToggle = document.getElementById('theme-toggle');
 const themeIcon = themeToggle ? themeToggle.querySelector('i') : null;
 const requestPayoutBtn = document.getElementById('request-payout-btn');
+
+const promoInput = document.getElementById('promo-code-input');
 
 // Load saved theme
 const savedTheme = localStorage.getItem('theme') || 'light';
@@ -100,6 +134,25 @@ async function getUserMetadata() {
     }
 }
 
+// Admin Audit Logging
+async function addAuditLog(action, details, targetUid = null) {
+    const user = auth.currentUser;
+    if (!user) return;
+    try {
+        await addDoc(collection(db, "audit_logs"), {
+            adminUid: user.uid,
+            adminEmail: user.email,
+            action,
+            details,
+            targetUid,
+            timestamp: serverTimestamp()
+        });
+    } catch (e) {
+        console.error("Audit log error:", e);
+    }
+}
+}
+
 function showToast(message, type = 'success') {
     const container = document.getElementById('toast-container');
     const toast = document.createElement('div');
@@ -130,6 +183,31 @@ function validateTRC20(address) {
 }
 
 // --- Auth Logic ---
+
+window.switchAuthTab = (type) => {
+    const loginForm = document.getElementById('login-form');
+    const regForm = document.getElementById('register-form');
+    const loginTab = document.getElementById('tab-login');
+    const regTab = document.getElementById('tab-register');
+    const title = document.getElementById('auth-title');
+    const subtitle = document.getElementById('auth-subtitle');
+
+    if (type === 'login') {
+        loginForm.style.display = 'flex';
+        regForm.style.display = 'none';
+        loginTab.classList.add('active');
+        regTab.classList.remove('active');
+        title.innerText = "Welcome Back";
+        subtitle.innerText = "Sign in to continue earning USDT rewards";
+    } else {
+        loginForm.style.display = 'none';
+        regForm.style.display = 'flex';
+        loginTab.classList.remove('active');
+        regTab.classList.add('active');
+        title.innerText = "Create Account";
+        subtitle.innerText = "Join thousands of users earning daily rewards";
+    }
+};
 
 registerBtn.addEventListener('click', async () => {
     const fullName = document.getElementById('reg-name').value;
@@ -166,6 +244,14 @@ registerBtn.addEventListener('click', async () => {
                 referrerUid = querySnapshot.docs[0].id;
                 await updateDoc(doc(db, "users", referrerUid), {
                     referralCount: increment(1)
+                });
+
+                // Add notification for referrer
+                await addDoc(collection(db, "users", referrerUid, "notifications"), {
+                    title: "🤝 New Referral!",
+                    message: `${fullName} joined using your link. You'll earn 10% of their rewards!`,
+                    timestamp: serverTimestamp(),
+                    read: false
                 });
             }
         }
@@ -324,7 +410,7 @@ window.startVideoTask = async () => {
 
     window.showAdNetworkInterstitial(async () => {
         const timeTaken = (Date.now() - startTime) / 1000;
-        if (timeTaken < 3) {
+        if (timeTaken < 5) {
             showToast("Fraud detected: Ad interaction too fast.", "error");
             watchVideoBtn.innerHTML = originalText;
             watchVideoBtn.disabled = false;
@@ -349,6 +435,7 @@ window.startVideoTask = async () => {
             updates.dailyEarningsCount = increment(reward);
             updates.lastRewardDate = today;
             updates.totalTasksDone = increment(1);
+            updates.totalVideosWatched = increment(10); // Added for badge tracking
             updates.videoTasksCompleted = 0;
 
             await updateDoc(userRef, updates);
@@ -495,17 +582,70 @@ window.verifySocialTask = async (platform, url, reward) => {
     }, 5000);
 };
 
-// --- Task Filtering ---
-window.filterTasks = (category, btn) => {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    const cards = document.querySelectorAll('.task-card-premium');
-    cards.forEach(card => {
-        const title = card.querySelector('h3').innerText.toLowerCase();
-        card.style.display = (category === 'all' ||
-            (category === 'surveys' && title.includes('survey')) ||
-            (category === 'videos' && (title.includes('video') || title.includes('ads')))) ? 'flex' : 'none';
+// --- Navigation ---
+document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+        e.preventDefault();
+        const screenId = item.getAttribute('data-screen');
+        if (!screenId) return;
+
+        // UI Updates
+        document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+
+        document.querySelectorAll('.content-section').forEach(s => s.style.display = 'none');
+
+        const target = document.getElementById(screenId);
+        if (target) {
+            target.style.display = 'block';
+            if (screenId === 'section-admin') loadAdminStats();
+        }
     });
+});
+
+// --- Task Navigation ---
+window.showCategories = () => {
+    const categoriesView = document.getElementById('task-categories-view');
+    const listView = document.getElementById('task-list-view');
+    if (categoriesView) categoriesView.classList.remove('screen-hidden');
+    if (listView) listView.classList.add('screen-hidden');
+};
+
+window.filterTasks = (category) => {
+    const customContainer = document.getElementById('custom-tasks-container');
+    const nativeGrid = document.getElementById('native-tasks-grid');
+    const nativeCards = document.querySelectorAll('.native-task-card');
+    const titleEl = document.getElementById('current-category-title');
+    const categoriesView = document.getElementById('task-categories-view');
+    const listView = document.getElementById('task-list-view');
+
+    // Switch View
+    if (categoriesView) categoriesView.classList.add('screen-hidden');
+    if (listView) listView.classList.remove('screen-hidden');
+
+    // Update Title
+    const titles = {
+        'custom': 'Priority XP Tasks',
+        'surveys': 'Premium Surveys',
+        'videos': 'Video Rewards',
+        'social': 'Social Media Tasks'
+    };
+    if (titleEl) titleEl.innerText = titles[category] || 'Tasks';
+
+    if (category === 'custom') {
+        if (customContainer) customContainer.style.display = 'grid';
+        if (nativeGrid) nativeGrid.style.display = 'none';
+    } else {
+        if (customContainer) customContainer.style.display = 'none';
+        if (nativeGrid) nativeGrid.style.display = 'grid';
+        nativeCards.forEach(card => {
+            if (card.getAttribute('data-category') === category) {
+                card.style.display = 'flex';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    }
 };
 
 // --- Leaderboards ---
@@ -514,16 +654,32 @@ function loadLeaderboard() {
     const q = query(collection(db, "users"), orderBy("balance", "desc"), limit(10));
     onSnapshot(q, (snapshot) => {
         leaderboardBody.innerHTML = "";
+        const miniLeaderboard = document.getElementById('dashboard-leaderboard');
+        if (miniLeaderboard) miniLeaderboard.innerHTML = "";
+
         let rank = 1;
         snapshot.forEach((userDoc) => {
             const data = userDoc.data();
-            leaderboardBody.innerHTML += `
+            const rowHtml = `
                 <tr class="history-row animate__animated animate__fadeIn">
-                    <td>#${rank++}</td>
+                    <td>#${rank}</td>
                     <td>${data.fullName || 'User'}</td>
                     <td>${data.totalTasksDone || 0}</td>
                     <td style="font-weight: 800; color: var(--success);">$${(data.balance || 0).toFixed(2)}</td>
                 </tr>`;
+            leaderboardBody.innerHTML += rowHtml;
+
+            if (miniLeaderboard && rank <= 3) {
+                miniLeaderboard.innerHTML += `
+                    <div class="quick-task-item">
+                        <div class="qt-icon">${rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉'}</div>
+                        <div class="qt-info">
+                            <p>${data.fullName || 'User'}</p>
+                            <span>$${(data.balance || 0).toFixed(2)}</span>
+                        </div>
+                    </div>`;
+            }
+            rank++;
         });
     });
 }
@@ -692,23 +848,66 @@ async function loadAdminPayouts() {
     });
 }
 
+let auditLogsListener = null;
+async function loadAuditLogs() {
+    const list = document.getElementById('admin-audit-logs');
+    if (!list) return;
+    if (auditLogsListener) auditLogsListener();
+    const q = query(collection(db, "audit_logs"), orderBy("timestamp", "desc"), limit(50));
+    auditLogsListener = onSnapshot(q, (snapshot) => {
+        list.innerHTML = "";
+        snapshot.forEach(logDoc => {
+            const data = logDoc.data();
+            const time = data.timestamp ? new Date(data.timestamp.seconds * 1000).toLocaleString() : "...";
+            list.innerHTML += `<div class="log-item" style="padding:10px; border-bottom:1px solid var(--border-color); font-size:12px;">
+                <strong>${data.action}</strong>: ${data.targetUid} by ${data.adminId} <br>
+                <span style="opacity:0.6;">${time}</span>
+            </div>`;
+        });
+    });
+}
+
 window.resetUserDailyLimits = async (uid) => {
     if (!confirm("Reset daily limits for this user (Today only)?")) return;
-    await updateDoc(doc(db, "users", uid), {
-        dailyVideoCount: 0,
-        dailySurveyCount: 0,
-        dailyEarningsCount: 0,
-        lastVideoDate: "",
-        lastSurveyDate: "",
-        lastRewardDate: ""
-    });
-    showToast("Daily limits reset.");
+    try {
+        await updateDoc(doc(db, "users", uid), {
+            dailyVideoCount: 0,
+            dailySurveyCount: 0,
+            dailyEarningsCount: 0,
+            lastVideoDate: "",
+            lastSurveyDate: "",
+            lastRewardDate: ""
+        });
+
+        await addDoc(collection(db, "audit_logs"), {
+            adminId: auth.currentUser.uid,
+            action: "RESET_LIMITS",
+            targetUid: uid,
+            timestamp: serverTimestamp()
+        });
+
+        showToast("Daily limits reset.");
+    } catch (e) {
+        showToast("Error resetting limits", "error");
+    }
 };
 
 window.toggleBanUser = async (uid, currentStatus) => {
     if (!confirm(`Are you sure you want to ${currentStatus ? 'Unban' : 'Ban'} this user?`)) return;
-    await updateDoc(doc(db, "users", uid), { isBanned: !currentStatus });
-    showToast(`User ${currentStatus ? 'unbanned' : 'banned'} successfully.`);
+    try {
+        await updateDoc(doc(db, "users", uid), { isBanned: !currentStatus });
+
+        await addDoc(collection(db, "audit_logs"), {
+            adminId: auth.currentUser.uid,
+            action: currentStatus ? "UNBAN_USER" : "BAN_USER",
+            targetUid: uid,
+            timestamp: serverTimestamp()
+        });
+
+        showToast(`User ${currentStatus ? 'unbanned' : 'banned'} successfully.`);
+    } catch (e) {
+        showToast("Error toggling ban", "error");
+    }
 };
 
 window.approvePayout = async (pid) => {
@@ -763,7 +962,8 @@ async function claimDailyReward(userData, amount) {
         await updateDoc(userRef, {
             balance: increment(amount),
             lastCheckIn: new Date().toISOString(),
-            checkInStreak: increment(1)
+            checkInStreak: increment(1),
+            totalTasksDone: increment(1)
         });
         await addDoc(collection(db, "users", auth.currentUser.uid, "transactions"), {
             activity: "Daily Check-in",
@@ -859,36 +1059,294 @@ window.shareReferral = (platform) => {
 };
 
 const achievements = [
-    { id: 'first_task', title: 'First Steps', desc: 'Complete 1 task', icon: 'bx-check-double', condition: (d) => d.totalTasksDone >= 1 },
-    { id: 'earner_1', title: 'Novice Earner', desc: 'Earn your first $1.00', icon: 'bx-coin', condition: (d) => d.balance >= 1 },
-    { id: 'referral_1', title: 'Team Player', desc: 'Refer 1 friend', icon: 'bx-user-plus', condition: (d) => d.referralCount >= 1 },
-    { id: 'streak_3', title: 'Committed', desc: '3 day check-in streak', icon: 'bx-calendar-star', condition: (d) => d.checkInStreak >= 3 },
-    { id: 'whale', title: 'High Roller', desc: 'Earn $10.00 total', icon: 'bx-crown', condition: (d) => d.balance >= 10 }
+    { id: 'first_task', title: 'First Steps', desc: 'Complete 1 task', icon: 'bx-check-double', condition: (d) => (d.totalTasksDone || 0) >= 1 },
+    { id: 'earner_1', title: 'Novice Earner', desc: 'Earn your first $1.00', icon: 'bx-coin', condition: (d) => (d.balance || 0) >= 1 },
+    { id: 'referral_1', title: 'Team Player', desc: 'Refer 1 friend', icon: 'bx-user-plus', condition: (d) => (d.referralCount || 0) >= 1 },
+    { id: 'streak_3', title: 'Committed', desc: '3 day check-in streak', icon: 'bx-calendar-star', condition: (d) => (d.checkInStreak || 0) >= 3 },
+    { id: 'level_5', title: 'Rising Star', desc: 'Reach Level 5', icon: 'bx-trending-up', condition: (d) => (Math.floor((d.totalXP || d.totalTasksDone || 0) / 50) + 1) >= 5 },
+    { id: 'whale', title: 'High Roller', desc: 'Earn $10.00 total', icon: 'bx-crown', condition: (d) => (d.balance || 0) >= 10 },
+    { id: 'video_expert', title: 'Binge Watcher', desc: 'Watch 500 videos total', icon: 'bx-slideshow', condition: (d) => (d.totalVideosWatched || 0) >= 500 }
 ];
 
 function updateAchievementsUI(userData) {
     const grid = document.getElementById('badge-grid');
-    if (!grid) return;
-    grid.innerHTML = '';
-    achievements.forEach(ach => {
-        const unlocked = ach.condition(userData);
-        const card = document.createElement('div');
-        card.className = `badge-card ${unlocked ? 'unlocked' : ''}`;
-        card.innerHTML = `<i class='bx ${ach.icon}'></i><h4>${ach.title}</h4><p>${ach.desc}</p>`;
-        grid.appendChild(card);
-    });
+    const miniGrid = document.getElementById('dashboard-achievements');
+
+    if (grid) {
+        grid.innerHTML = achievements.map(ach => {
+            const unlocked = ach.condition(userData);
+            return `
+                <div class="badge-card ${unlocked ? 'unlocked' : ''}">
+                    <div class="badge-icon-wrapper">
+                        <i class='bx ${ach.icon}'></i>
+                    </div>
+                    <h4>${ach.title}</h4>
+                    <p>${ach.desc}</p>
+                    ${unlocked ? '<span class="status-badge">Unlocked</span>' : '<span class="status-badge locked">Locked</span>'}
+                </div>`;
+        }).join('');
+    }
+
+    if (miniGrid) {
+        miniGrid.innerHTML = achievements
+            .filter(ach => ach.condition(userData))
+            .slice(0, 5) // Show only first 5 unlocked ones in banner
+            .map(ach => `
+                <div class="mini-badge unlocked animate__animated animate__bounceIn" title="${ach.title}: ${ach.desc}">
+                    <i class='bx ${ach.icon}'></i>
+                </div>
+            `).join('');
+
+        if (miniGrid.innerHTML === "") {
+            miniGrid.innerHTML = '<p style="font-size: 11px; opacity: 0.7; font-weight: 600;">Complete tasks to unlock badges!</p>';
+        }
+    }
 }
 
-function updateLevelUI(tasksCount) {
-    const level = Math.floor(tasksCount / 50) + 1;
-    const xp = tasksCount % 50;
+function updateLevelUI(userData) {
+    const xpTotal = userData.totalXP || 0;
+    const level = Math.floor(xpTotal / 50) + 1;
+    const xp = xpTotal % 50;
     const progress = (xp / 50) * 100;
     if (document.getElementById('user-level')) document.getElementById('user-level').innerText = level;
     if (document.getElementById('level-bar')) document.getElementById('level-bar').style.width = `${progress}%`;
     if (document.getElementById('level-percent')) document.getElementById('level-percent').innerText = `${Math.floor(progress)}%`;
 }
 
-// --- Notifications ---
+// --- Live Payouts Feed ---
+function initLiveFeed() {
+    const feed = document.getElementById('live-payouts-feed');
+    if (!feed) return;
+
+    let isInitialLoad = true;
+    const q = query(collection(db, "payouts"), orderBy("timestamp", "desc"), limit(5));
+    onSnapshot(q, (snapshot) => {
+        // Show notification for new payouts (skip initial load)
+        if (!isInitialLoad) {
+            snapshot.docChanges().forEach((change) => {
+                if (change.type === "added") {
+                    const data = change.doc.data();
+                    const displayId = data.uid ? `User...${data.uid.slice(-4)}` : 'Anonymous';
+                    showToast(`🔥 New Payout: $${(data.amount || 0).toFixed(2)} to ${displayId}!`, "success");
+
+                    // Trigger confetti for big payouts (> $50)
+                    if (data.amount >= 50) {
+                        confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+                    }
+                }
+            });
+        }
+        isInitialLoad = false;
+
+        feed.innerHTML = '';
+        if (snapshot.empty) {
+            feed.innerHTML = `
+                <div class="feed-item">
+                    <i class='bx bxs-info-circle'></i>
+                    <span>Waiting for the next big payout...</span>
+                </div>`;
+            return;
+        }
+
+        snapshot.forEach((doc) => {
+            const data = doc.data();
+            const item = document.createElement('div');
+            item.className = 'feed-item animate__animated animate__fadeInLeft';
+
+            // Mask UID for privacy if no username
+            const displayId = data.uid ? `User...${data.uid.slice(-4)}` : 'Anonymous';
+
+            item.innerHTML = `
+                <i class='bx bxs-check-circle' style="color: #10b981;"></i>
+                <span>${displayId} just withdrew <strong>$${(data.amount || 0).toFixed(2)} USDT</strong></span>
+            `;
+            feed.appendChild(item);
+        });
+    });
+}
+
+// --- Priority (Custom) Tasks Logic ---
+window.createNewAdminTask = async () => {
+    const title = document.getElementById('admin-task-title').value;
+    const link = document.getElementById('admin-task-link').value;
+    const xp = parseInt(document.getElementById('admin-task-xp').value);
+    const icon = document.getElementById('admin-task-icon').value;
+    const desc = document.getElementById('admin-task-desc').value;
+    const image = document.getElementById('admin-task-image').value;
+    const category = document.getElementById('admin-task-category').value || 'Daily';
+
+    if (!title || !link || !xp) return showToast("Please fill all fields", "error");
+
+    try {
+        await addDoc(collection(db, "custom_tasks"), {
+            title, link, xp, icon, desc, image, category,
+            createdAt: serverTimestamp(),
+            active: true
+        });
+        showToast("Priority task added successfully!");
+        addAuditLog("CREATE_PRIORITY_TASK", { title, xp, category });
+        // Clear fields
+        ['admin-task-title', 'admin-task-link', 'admin-task-xp', 'admin-task-desc', 'admin-task-image', 'admin-task-category'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+        loadAdminCustomTasks();
+    } catch (e) {
+        showToast("Error adding task", "error");
+    }
+};
+
+async function loadAdminCustomTasks() {
+    const list = document.getElementById('admin-custom-tasks-list');
+    if (!list) return;
+    const q = query(collection(db, "custom_tasks"), orderBy("createdAt", "desc"));
+    const snapshot = await getDocs(q);
+    list.innerHTML = '';
+    snapshot.forEach(docSnap => {
+        const t = docSnap.data();
+        list.innerHTML += `
+            <tr>
+                <td>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <i class='bx ${t.icon}' style="font-size:18px; color:var(--primary);"></i>
+                        <span>${t.title}</span>
+                    </div>
+                </td>
+                <td><span class="badge" style="background:var(--primary); color:white;">+${t.xp} XP</span></td>
+                <td><a href="${t.link}" target="_blank" class="btn-text" style="font-size:12px;">View Link</a></td>
+                <td><button onclick="deleteCustomTask('${docSnap.id}')" class="btn btn-sm btn-outline" style="color:var(--danger);">Delete</button></td>
+            </tr>
+        `;
+    });
+}
+
+window.deleteCustomTask = async (id) => {
+    if (confirm("Delete this task?")) {
+        await deleteDoc(doc(db, "custom_tasks", id));
+        loadAdminCustomTasks();
+        showToast("Task deleted");
+    }
+};
+
+function loadUserPriorityTasks(userData) {
+    const container = document.getElementById('custom-tasks-container');
+    if (!container) return;
+
+    onSnapshot(collection(db, "custom_tasks"), (snapshot) => {
+        container.innerHTML = '';
+        const completed = userData.completedCustomTasks || [];
+
+        snapshot.forEach(docSnap => {
+            const t = docSnap.data();
+            const id = docSnap.id;
+
+            if (completed.includes(id)) return;
+
+            container.innerHTML += `
+                <div class="task-card-premium priority-task animate__animated animate__fadeInUp" style="border: 2px solid var(--primary); background: linear-gradient(145deg, rgba(255,255,255,1), rgba(var(--primary-rgb), 0.05));">
+                    <div class="t-badge" style="background:var(--primary);">${t.category}</div>
+                    ${t.image ? `<div class="t-banner" style="width:100%; height:120px; border-radius:12px; overflow:hidden; margin-bottom:15px;"><img src="${t.image}" style="width:100%; height:100%; object-fit:cover;"></div>` : `<div class="t-icon-large" style="background:rgba(var(--primary-rgb),0.1); color:var(--primary);"><i class='bx ${t.icon}'></i></div>`}
+                    <h3 style="margin-top:10px;">${t.title}</h3>
+                    <p style="font-size:13px; line-height:1.5; margin-bottom:15px;">${t.desc}</p>
+                    <div class="t-meta" style="background:rgba(0,0,0,0.03); padding:10px; border-radius:10px;">
+                        <span><i class='bx bxs-zap' style="color:var(--warning);"></i> <strong>+${t.xp} XP</strong></span>
+                        <span style="font-size:11px; font-weight:700; color:var(--primary);">PRIORITY</span>
+                    </div>
+                    <button class="btn btn-primary btn-block" onclick="completePriorityTask('${id}', '${t.link}', ${t.xp})" style="margin-top:15px; box-shadow: 0 4px 15px rgba(var(--primary-rgb), 0.3);">
+                        <i class='bx bx-link-external'></i> Start Task
+                    </button>
+                </div>
+            `;
+        });
+    });
+}
+
+window.completePriorityTask = async (id, link, xp) => {
+    window.open(link, '_blank');
+
+    showToast("Opening link... click Verify in 5 seconds.", "info");
+
+    setTimeout(async () => {
+        if (confirm(`Did you complete the task: ${link}?`)) {
+            const user = auth.currentUser;
+            const userRef = doc(db, "users", user.uid);
+
+            try {
+                await runTransaction(db, async (transaction) => {
+                    const userDoc = await transaction.get(userRef);
+                    const data = userDoc.data();
+
+                    if (data.completedCustomTasks && data.completedCustomTasks.includes(id)) {
+                        throw "Task already completed";
+                    }
+
+                    transaction.update(userRef, {
+                        totalXP: increment(xp),
+                        completedCustomTasks: arrayUnion(id),
+                        totalTasksDone: increment(1)
+                    });
+
+                    // Log activity
+                    const historyRef = doc(collection(db, "users", user.uid, "history"));
+                    transaction.set(historyRef, {
+                        type: 'Priority Task',
+                        amount: xp,
+                        currency: 'XP',
+                        title: 'Social Task Completed',
+                        timestamp: serverTimestamp()
+                    });
+                });
+                showToast(`Success! +${xp} XP awarded.`, "success");
+                confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+            } catch (e) {
+                showToast(e, "error");
+            }
+        }
+    }, 5000);
+};
+
+// --- Task Navigation ---
+window.showCategories = () => {
+    document.getElementById('task-categories-view').classList.remove('screen-hidden');
+    document.getElementById('task-list-view').classList.add('screen-hidden');
+};
+
+window.filterTasks = (category) => {
+    const customContainer = document.getElementById('custom-tasks-container');
+    const nativeGrid = document.getElementById('native-tasks-grid');
+    const nativeCards = document.querySelectorAll('.native-task-card');
+    const titleEl = document.getElementById('current-category-title');
+
+    // Switch View
+    document.getElementById('task-categories-view').classList.add('screen-hidden');
+    document.getElementById('task-list-view').classList.remove('screen-hidden');
+
+    // Update Title
+    const titles = {
+        'custom': 'Priority XP Tasks',
+        'surveys': 'Premium Surveys',
+        'videos': 'Video Rewards',
+        'social': 'Social Media Tasks'
+    };
+    titleEl.innerText = titles[category] || 'Tasks';
+
+    if (category === 'custom') {
+        customContainer.style.display = 'grid';
+        nativeGrid.style.display = 'none';
+    } else {
+        customContainer.style.display = 'none';
+        nativeGrid.style.display = 'grid';
+        nativeCards.forEach(card => {
+            if (card.getAttribute('data-category') === category) {
+                card.style.display = 'flex';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    }
+};
+
+// Replace existing filterTasks if it exists
 window.clearNotifications = async () => {
     const user = auth.currentUser;
     if (!user) return;
@@ -940,19 +1398,174 @@ if (notifBell) {
     });
 }
 
-// --- Navigation ---
-window.showSection = (sectionId) => {
-    document.querySelectorAll('.content-section').forEach(s => s.classList.add('screen-hidden'));
-    const target = document.getElementById(`section-${sectionId}`);
-    if (target) target.classList.remove('screen-hidden');
+async function loadAdminStats() {
+    const statsContainer = document.getElementById('admin-stats-grid');
+    const logsContainer = document.getElementById('admin-audit-logs');
+    if (!statsContainer) return;
 
-    document.querySelectorAll('.nav-link').forEach(link => {
-        link.classList.remove('active');
-        if (link.getAttribute('onclick')?.includes(sectionId)) link.classList.add('active');
+    // Load Logs
+    const logQuery = query(collection(db, "audit_logs"), orderBy("timestamp", "desc"), limit(20));
+    onSnapshot(logQuery, (snapshot) => {
+        if (logsContainer) {
+            logsContainer.innerHTML = '';
+            snapshot.forEach(logDoc => {
+                const log = logDoc.data();
+                logsContainer.innerHTML += `
+                    <tr>
+                        <td style="font-size:12px;">${log.adminEmail}</td>
+                        <td><span class="badge">${log.action}</span></td>
+                        <td style="font-size:12px;">${JSON.stringify(log.details)}</td>
+                        <td style="font-size:11px; color:var(--text-muted);">${log.timestamp?.toDate().toLocaleString() || '...'}</td>
+                    </tr>
+                `;
+            });
+        }
     });
 
-    if (sectionId === 'admin') {
-        loadAdminStats();
+    // Load User List for investigation
+    const usersQuery = query(collection(db, "users"), limit(50));
+    onSnapshot(usersQuery, (snapshot) => {
+        const userList = document.getElementById('admin-users-list');
+        if (userList) {
+            userList.innerHTML = '';
+            snapshot.forEach(uDoc => {
+                const u = uDoc.data();
+                userList.innerHTML += `
+                    <tr>
+                        <td>
+                            <div style="font-weight:700;">${u.email}</div>
+                            <div style="font-size:10px; color:var(--text-muted);">${uDoc.id}</div>
+                        </td>
+                        <td>${u.metadata?.ip || 'N/A'}</td>
+                        <td style="color:var(--success); font-weight:800;">$${(u.balance || 0).toFixed(2)}</td>
+                        <td style="font-size:11px;">${u.metadata?.lastSeen?.toDate().toLocaleString() || 'Never'}</td>
+                        <td><span class="badge ${u.isBanned ? 'danger' : 'success'}">${u.isBanned ? 'Banned' : 'Active'}</span></td>
+                        <td>
+                            <button class="btn btn-sm btn-outline" onclick="toggleBan('${uDoc.id}', ${u.isBanned || false})">
+                                ${u.isBanned ? 'Unban' : 'Ban'}
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+    });
+
+    // Global Stats
+    const usersSnap = await getDocs(collection(db, "users"));
+    const pendingPayoutsSnap = await getDocs(query(collection(db, "payouts"), where("status", "==", "Pending")));
+    const completedPayoutsSnap = await getDocs(query(collection(db, "payouts"), where("status", "==", "Completed")));
+
+    let globalBal = 0;
+    usersSnap.forEach(d => globalBal += (d.data().balance || 0));
+
+    let pendingPayoutSum = 0;
+    pendingPayoutsSnap.forEach(d => pendingPayoutSum += (d.data().amount || 0));
+
+    let totalPaidSum = 0;
+    completedPayoutsSnap.forEach(d => totalPaidSum += (d.data().amount || 0));
+
+    statsContainer.innerHTML = `
+        <div class="stat-card">
+            <div class="s-icon purple"><i class='bx bxs-user'></i></div>
+            <div class="s-info"><p>Total Users</p><h2>${usersSnap.size}</h2></div>
+        </div>
+        <div class="stat-card">
+            <div class="s-icon green"><i class='bx bxs-wallet'></i></div>
+            <div class="s-info"><p>Platform Liability</p><h2>$${globalBal.toFixed(2)}</h2></div>
+        </div>
+        <div class="stat-card">
+            <div class="s-icon orange"><i class='bx bxs-time'></i></div>
+            <div class="s-info"><p>Pending Payouts</p><h2>$${pendingPayoutSum.toFixed(2)}</h2></div>
+        </div>
+        <div class="stat-card">
+            <div class="s-icon blue"><i class='bx bxs-badge-check'></i></div>
+            <div class="s-info"><p>Total Paid Out</p><h2>$${totalPaidSum.toFixed(2)}</h2></div>
+        </div>
+    `;
+
+    // Global Analytics Chart
+    initGlobalAnalyticsChart(globalBal);
+}
+
+let globalAnalyticsChart;
+async function initGlobalAnalyticsChart(currentLiability) {
+    const canvas = document.getElementById('globalAnalyticsChart');
+    if (!canvas) return;
+
+    // Get last 7 days labels
+    const labels = [];
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        labels.push(d.toLocaleDateString('en-US', { weekday: 'short' }));
+        const startOfDay = new Date(d.setHours(0, 0, 0, 0));
+        days.push(startOfDay);
+    }
+
+    const platformPayouts = [0, 0, 0, 0, 0, 0, 0];
+
+    const payoutSnap = await getDocs(query(collection(db, "payouts"), where("timestamp", ">=", days[0])));
+    payoutSnap.forEach(doc => {
+        const data = doc.data();
+        if (data.timestamp) {
+            const d = data.timestamp.toDate();
+            const dayIdx = labels.indexOf(d.toLocaleDateString('en-US', { weekday: 'short' }));
+            if (dayIdx !== -1) platformPayouts[dayIdx] += data.amount;
+        }
+    });
+
+    // Note: Transaction-wide search is heavy. We'll show Payouts vs Liability Growth (simulated for UI)
+    const liabilityGrowth = [currentLiability * 0.8, currentLiability * 0.85, currentLiability * 0.9, currentLiability * 0.92, currentLiability * 0.95, currentLiability * 0.98, currentLiability];
+
+    const ctx = canvas.getContext('2d');
+    if (globalAnalyticsChart) globalAnalyticsChart.destroy();
+    globalAnalyticsChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Payouts Processed ($)',
+                    data: platformPayouts,
+                    backgroundColor: '#10b981',
+                    borderRadius: 5
+                },
+                {
+                    label: 'Platform Liability ($)',
+                    data: liabilityGrowth,
+                    type: 'line',
+                    borderColor: '#6366f1',
+                    borderWidth: 3,
+                    fill: false,
+                    tension: 0.4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom' }
+            },
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+}
+
+window.toggleBan = async (uid, currentStatus) => {
+    const reason = prompt(`Reason for ${currentStatus ? 'unbanning' : 'banning'} user ${uid}:`);
+    if (reason === null) return;
+
+    try {
+        await updateDoc(doc(db, "users", uid), { isBanned: !currentStatus });
+        addAuditLog(currentStatus ? "UNBAN_USER" : "BAN_USER", { uid, reason });
+        showToast(`User ${currentStatus ? 'unbanned' : 'banned'}.`);
+    } catch (e) {
+        showToast("Error toggling ban status", "error");
     }
 };
 
@@ -1056,13 +1669,19 @@ onAuthStateChanged(auth, (user) => {
     if (user) {
         landingPage.classList.add('screen-hidden');
         mainApp.classList.remove('screen-hidden');
+        requestNotificationPermission(user.uid);
         onSnapshot(doc(db, "users", user.uid), (doc) => {
             if (doc.exists()) {
                 const data = doc.data();
                 syncUserData(data);
-                updateLevelUI(data.totalTasksDone || 0);
+                updateLevelUI(data);
                 updateAchievementsUI(data);
                 updateDailyCheckInUI(data);
+                loadUserPriorityTasks(data);
+                if (data.role === 'admin') {
+                    document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('screen-hidden'));
+                    loadAdminCustomTasks();
+                }
             }
         });
         loadLeaderboard();
@@ -1070,11 +1689,64 @@ onAuthStateChanged(auth, (user) => {
         loadTransactionHistory(user.uid);
         loadNotifications(user.uid);
         updateChartData(user.uid);
+        initLiveFeed();
     } else {
         landingPage.classList.remove('screen-hidden');
         mainApp.classList.add('screen-hidden');
     }
 });
+
+// --- Promo Code Logic ---
+window.redeemPromoCode = async () => {
+    const code = promoInput.value.trim().toUpperCase();
+    const user = auth.currentUser;
+    if (!user || !code) return;
+
+    try {
+        const promoRef = doc(db, "promo_codes", code);
+        const promoSnap = await getDoc(promoRef);
+
+        if (!promoSnap.exists()) {
+            showToast("Invalid promo code.", "error");
+            return;
+        }
+
+        const promoData = promoSnap.data();
+        const userRef = doc(db, "users", user.uid);
+        const userSnap = await getDoc(userRef);
+        const userData = userSnap.data();
+
+        if (userData.usedPromos && userData.usedPromos.includes(code)) {
+            showToast("You've already used this code.", "error");
+            return;
+        }
+
+        if (promoData.expiresAt && promoData.expiresAt.toDate() < new Date()) {
+            showToast("This code has expired.", "error");
+            return;
+        }
+
+        await updateDoc(userRef, {
+            balance: increment(promoData.rewardAmount || 0),
+            totalXP: increment(promoData.rewardXP || 0),
+            totalVideosWatched: increment(promoData.rewardVideos || 0), // Added to support new badge
+            usedPromos: arrayUnion(code)
+        });
+
+        await addDoc(collection(db, "users", user.uid, "transactions"), {
+            activity: `Promo Code: ${code}`,
+            amount: promoData.rewardAmount || 0,
+            status: "Completed",
+            timestamp: serverTimestamp()
+        });
+
+        showToast(`Success! +$${promoData.rewardAmount || 0} and +${promoData.rewardXP || 0} XP earned.`);
+        promoInput.value = "";
+        confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+    } catch (e) {
+        showToast("Error redeeming code.", "error");
+    }
+};
 
 window.copyToClipboard = (elementId) => {
     const copyText = document.getElementById(elementId);
@@ -1085,6 +1757,20 @@ window.copyToClipboard = (elementId) => {
     showToast("Copied to clipboard!");
 };
 
+window.copyReferralLink = () => {
+    const link = document.getElementById('referral-link').value;
+    navigator.clipboard.writeText(link);
+    showToast("Referral link copied!");
+};
+
+window.selectSurveyOpt = (btn) => {
+    const parent = btn.parentElement;
+    parent.querySelectorAll('.survey-opt').forEach(b => b.classList.remove('active', 'btn-primary'));
+    parent.querySelectorAll('.survey-opt').forEach(b => b.classList.add('btn-outline'));
+    btn.classList.remove('btn-outline');
+    btn.classList.add('active', 'btn-primary');
+};
+
 function syncUserData(data) {
     const user = auth.currentUser;
     if (user && document.getElementById('profile-id')) {
@@ -1093,18 +1779,40 @@ function syncUserData(data) {
     userEmailSidebar.innerText = data.email;
     userAvatar.innerText = (data.fullName ? data.fullName[0] : data.email[0]).toUpperCase();
     document.getElementById('user-name-display').innerText = data.fullName || 'Earner';
-    const bal = (data.balance || 0).toFixed(2);
-    if (balanceSpan) balanceSpan.innerText = bal;
-    if (balanceBigSpan) balanceBigSpan.innerText = bal;
+
+    const balance = data.balance || 0;
+    const balStr = balance.toFixed(2);
+    if (balanceSpan) balanceSpan.innerText = balStr;
+    if (balanceBigSpan) balanceBigSpan.innerText = balStr;
+
+    // Payout Progress
+    const payoutGoal = PLATFORM_CONFIG.limits.minWithdrawal;
+    const payoutPercent = Math.min((balance / payoutGoal) * 100, 100);
+    const payoutBar = document.getElementById('payout-progress-bar');
+    const payoutText = document.getElementById('payout-progress-text');
+    if (payoutBar) payoutBar.style.width = `${payoutPercent}%`;
+    if (payoutText) payoutText.innerText = `${Math.floor(payoutPercent)}%`;
+
     if (tasksCountSpan) tasksCountSpan.innerText = data.totalTasksDone || 0;
     if (walletInput) walletInput.value = data.walletAddress || "";
-    if (videoProgressText) videoProgressText.innerText = `Progress: ${data.videoTasksCompleted || 0}/10 Videos`;
 
-    const progressPercent = ((data.videoTasksCompleted || 0) / 10) * 100;
-    const progressBar = document.getElementById('video-progress-bar');
-    const progressPercentText = document.getElementById('video-progress-percent');
-    if (progressBar) progressBar.style.width = `${progressPercent}%`;
-    if (progressPercentText) progressPercentText.innerText = `${Math.floor(progressPercent)}%`;
+    // Video Task Progress (towards $0.10 reward)
+    const videoRewardProgress = data.videoTasksCompleted || 0;
+    if (videoProgressText) videoProgressText.innerText = `Progress: ${videoRewardProgress}/10 Videos`;
+
+    // Video Task Progress (Task Center)
+    const today = new Date().toDateString();
+    const dailyVideoCount = data.lastVideoDate === today ? (data.dailyVideoCount || 0) : 0;
+    const videoLimit = PLATFORM_CONFIG.limits.maxVideosPerDay;
+    const videoLimitPercent = (dailyVideoCount / videoLimit) * 100;
+
+    const videoBarCenter = document.getElementById('video-progress-bar-center');
+    const videoTextCenter = document.getElementById('video-progress-text-center');
+    const videoPercentCenter = document.getElementById('video-progress-percent-center');
+
+    if (videoBarCenter) videoBarCenter.style.width = `${(videoRewardProgress / 10) * 100}%`;
+    if (videoTextCenter) videoTextCenter.innerText = `Daily: ${dailyVideoCount}/${videoLimit}`;
+    if (videoPercentCenter) videoPercentCenter.innerText = `${Math.floor((videoRewardProgress / 10) * 100)}%`;
 
     if (refCountText) refCountText.innerText = data.referralCount || 0;
     if (refEarningsText) refEarningsText.innerText = (data.referralEarnings || 0).toFixed(2);
@@ -1118,6 +1826,7 @@ function syncUserData(data) {
             loadAdminUsers();
             loadAdminPayouts();
             loadAdminStats();
+            loadAuditLogs();
         }
     }
 }
