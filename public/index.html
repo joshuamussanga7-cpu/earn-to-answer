@@ -124,17 +124,22 @@
                         <input type="number" id="reg-human-answer" placeholder="Your answer">
                     </div>
                 </div>
-                <div class="auth-options" style="margin-top: -10px; margin-bottom: 10px;">
+                <div class="auth-options" style="margin-top: -10px; margin-bottom: 10px; flex-direction: column; align-items: flex-start; gap: 10px;">
                     <label class="checkbox-container">
                         <input type="checkbox" id="reg-terms-check">
                         <span class="checkmark"></span>
-                        <span style="font-size: 12px;">I am not using a VPN & agree to <a href="#" onclick="showTerms()" style="color: var(--primary);">Terms</a></span>
+                        <span style="font-size: 12px;">I am not using a VPN & agree to <a href="javascript:void(0)" onclick="showTerms()" style="color: var(--primary);">Terms</a></span>
+                    </label>
+                    <label class="checkbox-container">
+                        <input type="checkbox" id="reg-privacy-check">
+                        <span class="checkmark"></span>
+                        <span style="font-size: 12px;">I agree to the <a href="javascript:void(0)" onclick="showPrivacy()" style="color: var(--primary);">Privacy Policy</a></span>
                     </label>
                 </div>
                 <button id="register-btn" class="btn btn-primary btn-block">Create Account</button>
             </div>
 
-            <p class="auth-footer">By joining, you agree to our <a href="javascript:void(0)" onclick="showTerms()">Terms of Service</a></p>
+            <p class="auth-footer">By joining, you agree to our <a href="javascript:void(0)" onclick="showTerms()">Terms</a> & <a href="javascript:void(0)" onclick="showPrivacy()">Privacy Policy</a></p>
         </div>
     </div>
 
@@ -876,7 +881,7 @@
     <!-- Modals -->
     <div id="wheel-modal" class="modal-overlay screen-hidden">
         <div class="modal-card animate__animated animate__zoomIn" style="text-align: center;">
-            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <div class="modal-header">
                 <h2>Fortune Wheel</h2>
                 <button class="btn-icon" onclick="closeWheel()"><i class='bx bx-x'></i></button>
             </div>
@@ -893,7 +898,7 @@
 
     <div id="survey-modal" class="modal-overlay screen-hidden">
         <div class="modal-card animate__animated animate__zoomIn">
-            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+            <div class="modal-header">
                 <h2>Daily Feedback</h2>
                 <button class="btn-icon" onclick="document.getElementById('survey-modal').classList.add('screen-hidden')"><i class='bx bx-x'></i></button>
             </div>
@@ -940,25 +945,108 @@
 
     <!-- Terms Modal -->
     <div id="terms-modal" class="modal-overlay screen-hidden">
-        <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-content">
             <div class="modal-header">
                 <h3>Terms of Service</h3>
                 <button class="btn-icon" onclick="document.getElementById('terms-modal').classList.add('screen-hidden')">
                     <i class='bx bx-x'></i>
                 </button>
             </div>
-            <div class="modal-body" style="max-height: 400px; overflow-y: auto; font-size: 14px; line-height: 1.6; color: var(--text-muted);">
-                <p>Welcome to EarnToAnswer. By using our platform, you agree to the following rules:</p>
-                <ul style="margin: 15px 0; padding-left: 20px;">
-                    <li><strong>Anti-Fraud:</strong> VPNs, proxies, and multiple accounts per user are strictly prohibited.</li>
-                    <li><strong>Withdrawals:</strong> Minimum withdrawal is $10.00 USDT via TRC-20 network.</li>
-                    <li><strong>Daily Cap:</strong> Users are limited to $5.00 daily earnings to ensure platform stability.</li>
-                    <li><strong>Account Security:</strong> You are responsible for maintaining the security of your account.</li>
+            <div class="modal-body">
+                <p>Last Updated: October 2023</p>
+                <p>By accessing and using our platform, you agree to the following Terms of Service.</p>
+
+                <h4 style="margin-top: 20px; color: var(--text-main);">1. Description of Service</h4>
+                <p>We provide a platform where users can earn rewards by completing surveys, watching videos, and performing tasks. Rewards may be converted into USDT (TRC20) based on platform rules.</p>
+
+                <h4 style="margin-top: 20px; color: var(--text-main);">2. User Eligibility</h4>
+                <p>To use our platform, you must be at least 18 years old, provide accurate registration information, and use only one account.</p>
+
+                <h4 style="margin-top: 20px; color: var(--text-main);">3. Earnings and Rewards</h4>
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                    <li>Users earn rewards for completing tasks</li>
+                    <li>Rewards are subject to verification</li>
+                    <li>Some rewards may be delayed (pending status)</li>
+                    <li>Minimum withdrawal amount is $10</li>
                 </ul>
-                <p>Violation of these terms will result in permanent account suspension and forfeiture of balance.</p>
+                <p>We reserve the right to adjust reward values at any time.</p>
+
+                <h4 style="margin-top: 20px; color: var(--text-main);">4. Payment Terms</h4>
+                <p>Payments are processed periodically (e.g., weekly). Only approved earnings are eligible for withdrawal. Users must provide a valid TRC20 wallet address. We are not responsible for incorrect wallet addresses.</p>
+
+                <h4 style="margin-top: 20px; color: var(--text-main);">5. Fraud and Abuse</h4>
+                <p>The following are strictly prohibited: Multiple accounts, use of VPNs or proxies, automated/bot activity, and fake survey responses. Accounts violating these rules may be suspended, banned, or have earnings forfeited.</p>
+
+                <h4 style="margin-top: 20px; color: var(--text-main);">6. Third-Party Services</h4>
+                <p>Tasks are provided by third-party partners. We do not guarantee availability of tasks, qualification for surveys, or completion success.</p>
+
+                <h4 style="margin-top: 20px; color: var(--text-main);">7. Account Suspension</h4>
+                <p>We reserve the right to suspend or terminate accounts for fraudulent activity, violation of terms, or suspicious behavior.</p>
+
+                <h4 style="margin-top: 20px; color: var(--text-main);">8. Limitation of Liability</h4>
+                <p>We are not liable for loss of earnings due to third-party issues, technical errors, downtime, or payment delays beyond our control.</p>
+
+                <h4 style="margin-top: 20px; color: var(--text-main);">9. Changes to Terms</h4>
+                <p>We may update these Terms at any time. Continued use means acceptance of updated terms.</p>
+
+                <h4 style="margin-top: 20px; color: var(--text-main);">10. Contact Information</h4>
+                <p>For support or inquiries: support@earntoanswer.com</p>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-primary btn-block" onclick="document.getElementById('terms-modal').classList.add('screen-hidden')">I Understand</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Privacy Policy Modal -->
+    <div id="privacy-modal" class="modal-overlay screen-hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Privacy Policy</h3>
+                <button class="btn-icon" onclick="document.getElementById('privacy-modal').classList.add('screen-hidden')">
+                    <i class='bx bx-x'></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>Last Updated: October 2023</p>
+                <p>Welcome to our platform. Your privacy is important to us. This Privacy Policy explains how we collect, use, and protect your information when you use our website and services.</p>
+
+                <h4 style="margin-top: 20px; color: var(--text-main);">1. Information We Collect</h4>
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                    <li><strong>Personal Information:</strong> Email address, username, and wallet address (TRC20 USDT)</li>
+                    <li><strong>Device Information:</strong> IP address, browser type, device type</li>
+                    <li><strong>Usage Data:</strong> Tasks completed, time spent, interactions on the platform</li>
+                </ul>
+
+                <h4 style="margin-top: 20px; color: var(--text-main);">2. How We Use Your Information</h4>
+                <p>We use your information to provide and maintain our services, track task completion and rewards, prevent fraud and abuse, improve user experience, and process payouts.</p>
+
+                <h4 style="margin-top: 20px; color: var(--text-main);">3. Third-Party Services</h4>
+                <p>We work with third-party partners such as survey and offerwall providers. These partners may collect additional data when you interact with their services (Survey providers, Advertising networks, Offerwall providers). We are not responsible for the privacy practices of these third parties.</p>
+
+                <h4 style="margin-top: 20px; color: var(--text-main);">4. Data Sharing</h4>
+                <p>We may share limited user data (such as user ID) with our partners to track completed tasks, verify rewards, and prevent fraud. We do not sell your personal data.</p>
+
+                <h4 style="margin-top: 20px; color: var(--text-main);">5. Cookies and Tracking</h4>
+                <p>We use cookies and similar technologies to track user sessions, improve functionality, and analyze performance.</p>
+
+                <h4 style="margin-top: 20px; color: var(--text-main);">6. Data Security</h4>
+                <p>We implement security measures to protect your data. However, no system is 100% secure, and we cannot guarantee absolute security.</p>
+
+                <h4 style="margin-top: 20px; color: var(--text-main);">7. User Responsibilities</h4>
+                <p>Users must provide accurate information, use only one account, and avoid fraudulent activities. Violation may result in account suspension.</p>
+
+                <h4 style="margin-top: 20px; color: var(--text-main);">8. Your Rights</h4>
+                <p>You may request access to your data, correction of your data, or deletion of your account.</p>
+
+                <h4 style="margin-top: 20px; color: var(--text-main);">9. Changes to This Policy</h4>
+                <p>We may update this Privacy Policy at any time. Continued use of the platform means you accept the changes.</p>
+
+                <h4 style="margin-top: 20px; color: var(--text-main);">10. Contact Us</h4>
+                <p>If you have any questions, contact us at: support@earntoanswer.com</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary btn-block" onclick="document.getElementById('privacy-modal').classList.add('screen-hidden')">I Agree</button>
             </div>
         </div>
     </div>
@@ -995,6 +1083,11 @@
         window.showTerms = () => {
             const termsModal = document.getElementById('terms-modal');
             if (termsModal) termsModal.classList.remove('screen-hidden');
+        };
+
+        window.showPrivacy = () => {
+            const privacyModal = document.getElementById('privacy-modal');
+            if (privacyModal) privacyModal.classList.remove('screen-hidden');
         };
 
         window.closeAuthModal = () => {

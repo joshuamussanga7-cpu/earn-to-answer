@@ -26,7 +26,7 @@ async function requestNotificationPermission(uid) {
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
             const token = await getToken(messaging, {
-                vapidKey: 'BGErNq7H-3v3vW4v4v4v4v4v4v4v4v4v4v4v4v4v4v4' // Placeholder: User needs to replace with actual VAPID key
+                vapidKey: 'BGErNq7H-3v3vW4v4v4v4v4v4v4v4v4v4v4v4v4v4v4' // Replace with your Firebase Project -> Cloud Messaging -> Web Push VAPID Key
             });
             if (token) {
                 await updateDoc(doc(db, "users", uid), { fcmToken: token });
@@ -339,8 +339,13 @@ window.showTerms = () => {
     const termsModal = document.getElementById('terms-modal');
     if (termsModal) {
         termsModal.classList.remove('screen-hidden');
-    } else {
-        alert("Terms of Service:\n1. No VPNs/Proxies.\n2. One account per person.\n3. Minimum withdrawal $10.\n4. Max daily earning $5.");
+    }
+};
+
+window.showPrivacy = () => {
+    const privacyModal = document.getElementById('privacy-modal');
+    if (privacyModal) {
+        privacyModal.classList.remove('screen-hidden');
     }
 };
 
@@ -352,6 +357,7 @@ registerBtn.addEventListener('click', async () => {
     const humanAnswer = parseInt(document.getElementById('reg-human-answer').value);
     const regRefInput = document.getElementById('reg-ref').value.trim();
     const termsAccepted = document.getElementById('reg-terms-check').checked;
+    const privacyAccepted = document.getElementById('reg-privacy-check').checked;
 
     if (!fullName || !email || !password || !confirmPassword) {
         showToast("Please fill in all fields.", "error");
@@ -369,8 +375,8 @@ registerBtn.addEventListener('click', async () => {
         return;
     }
 
-    if (!termsAccepted) {
-        showToast("Please agree to the Terms and Anti-VPN policy.", "error");
+    if (!termsAccepted || !privacyAccepted) {
+        showToast("Please agree to the Terms and Privacy Policy.", "error");
         return;
     }
 
@@ -438,7 +444,8 @@ registerBtn.addEventListener('click', async () => {
             checkInStreak: 0,
             createdAt: new Date().toISOString(),
             metadata: meta,
-            role: "user"
+            role: "user",
+            privacyAcceptedAt: serverTimestamp()
         });
 
         showToast("Account created successfully!");
@@ -1819,7 +1826,10 @@ if (requestPayoutBtn) {
                 const txRef = doc(collection(db, "users", user.uid, "transactions"), payoutRef.id);
 
                 // Atomic updates
-                transaction.update(userRef, { balance: 0 }); // Deduct full balance
+                transaction.update(userRef, {
+                    balance: 0,
+                    lastWithdrawalDate: serverTimestamp()
+                });
                 transaction.set(payoutRef, {
                     uid: user.uid,
                     amount: bal,
