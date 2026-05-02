@@ -16,9 +16,22 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=1.0.1">
 </head>
 <body>
+    <!-- Global Loader -->
+    <div id="global-loader" class="modal-overlay screen-hidden">
+        <div class="loader-content-unique">
+            <div class="shapes-container">
+                <div class="shape shape-1"></div>
+                <div class="shape shape-2"></div>
+                <div class="shape shape-3"></div>
+                <div class="loader-app-name">EarnToAnswer</div>
+            </div>
+            <p id="loader-text">Secure connection...</p>
+        </div>
+    </div>
+
     <!-- Auth Screen -->
     <div id="landing-page" class="auth-container">
         <div class="auth-visuals">
@@ -91,21 +104,42 @@
                     </div>
                 </div>
                 <div class="input-group">
+                    <label>Confirm Password</label>
+                    <div class="input-wrapper">
+                        <i class='bx bx-lock-alt'></i>
+                        <input type="password" id="reg-confirm-password" placeholder="••••••••">
+                    </div>
+                </div>
+                <div class="input-group">
                     <label>Referral ID (Optional)</label>
                     <div class="input-wrapper">
                         <i class='bx bx-user-plus'></i>
                         <input type="text" id="reg-ref" placeholder="Referral code">
                     </div>
                 </div>
+                <div class="input-group">
+                    <label id="human-check-label">Security Check: 5 + 3 = ?</label>
+                    <div class="input-wrapper">
+                        <i class='bx bx-shield-quarter'></i>
+                        <input type="number" id="reg-human-answer" placeholder="Your answer">
+                    </div>
+                </div>
+                <div class="auth-options" style="margin-top: -10px; margin-bottom: 10px;">
+                    <label class="checkbox-container">
+                        <input type="checkbox" id="reg-terms-check">
+                        <span class="checkmark"></span>
+                        <span style="font-size: 12px;">I am not using a VPN & agree to <a href="#" onclick="showTerms()" style="color: var(--primary);">Terms</a></span>
+                    </label>
+                </div>
                 <button id="register-btn" class="btn btn-primary btn-block">Create Account</button>
             </div>
 
-            <p class="auth-footer">By joining, you agree to our <a href="#">Terms of Service</a></p>
+            <p class="auth-footer">By joining, you agree to our <a href="javascript:void(0)" onclick="showTerms()">Terms of Service</a></p>
         </div>
     </div>
 
     <!-- Main Dashboard -->
-    <div id="main-app" style="display: none;">
+    <div id="main-app" class="screen-hidden">
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
@@ -560,6 +594,7 @@
                     <h1>Withdraw Funds</h1>
                     <p>Securely withdraw your earnings to your USDT TRC-20 wallet.</p>
                 </div>
+
                 <div class="stats-row">
                     <div class="stat-card">
                         <div class="s-icon purple"><i class='bx bxs-bank'></i></div>
@@ -568,25 +603,82 @@
                             <h2>$10.00</h2>
                         </div>
                     </div>
-                </div>
-
-                <div class="card" style="margin-top: 30px; max-width: 600px;">
-                    <div class="input-group">
-                        <label>USDT Address (TRC-20 Only)</label>
-                        <div class="input-wrapper">
-                            <i class='bx bx-link'></i>
-                            <input type="text" id="wallet-address" placeholder="Txxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+                    <div class="stat-card">
+                        <div class="s-icon green"><i class='bx bxs-wallet-alt'></i></div>
+                        <div class="s-info">
+                            <p>Available Balance</p>
+                            <h2>$<span id="withdraw-balance">0.00</span></h2>
                         </div>
                     </div>
-                    <button id="save-wallet-btn" class="btn btn-outline btn-block" style="margin-top: 10px;">Save Address</button>
+                </div>
 
-                    <div style="margin-top: 30px; padding-top: 30px; border-top: 1px solid var(--border-color);">
-                        <button id="request-payout-btn" class="btn btn-primary btn-block" style="height: 60px; font-size: 18px;">
-                            Request Withdrawal
-                        </button>
-                        <p style="text-align: center; font-size: 12px; color: var(--text-muted); margin-top: 15px;">
-                            <i class='bx bx-info-circle'></i> Payouts are processed every Sunday at 12:00 UTC.
+                <div class="dashboard-grid" style="margin-top: 30px;">
+                    <!-- Withdrawal Form -->
+                    <div class="card" style="grid-column: span 7;">
+                        <h3>Request Payout</h3>
+                        <p style="font-size: 13px; color: var(--text-muted); margin: 10px 0 20px;">
+                            Enter your TRC-20 address. Ensure it is correct as transactions cannot be reversed.
                         </p>
+
+                        <div class="input-group">
+                            <label>USDT Address (TRC-20 Only)</label>
+                            <div class="input-wrapper">
+                                <i class='bx bx-link'></i>
+                                <input type="text" id="wallet-address" placeholder="Txxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+                            </div>
+                        </div>
+                        <button id="save-wallet-btn" class="btn btn-outline btn-block" style="margin-top: 10px;">Save Address</button>
+
+                        <div style="margin-top: 30px; padding-top: 30px; border-top: 1px solid var(--border-color);">
+                            <div id="withdrawal-status-box" style="display: none; margin-bottom: 20px; padding: 15px; border-radius: 12px; background: rgba(99, 102, 241, 0.05); border: 1px solid var(--primary);">
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <div class="spinner-small"></div>
+                                    <span id="withdrawal-status-text" style="font-size: 13px; font-weight: 600;">Processing request...</span>
+                                </div>
+                            </div>
+
+                            <button id="request-payout-btn" class="btn btn-primary btn-block" style="height: 60px; font-size: 18px;">
+                                Request Withdrawal
+                            </button>
+                            <p style="text-align: center; font-size: 12px; color: var(--text-muted); margin-top: 15px;">
+                                <i class='bx bx-info-circle'></i> Payouts are processed every Sunday at 12:00 UTC.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Withdrawal Timeline -->
+                    <div class="card" style="grid-column: span 5;">
+                        <h3>How it works</h3>
+                        <div class="timeline" style="margin-top: 20px;">
+                            <div class="timeline-item">
+                                <div class="t-bullet active">1</div>
+                                <div class="t-content">
+                                    <h4>Request</h4>
+                                    <p>Submit request once you reach $10.00</p>
+                                </div>
+                            </div>
+                            <div class="timeline-item">
+                                <div class="t-bullet">2</div>
+                                <div class="t-content">
+                                    <h4>Audit</h4>
+                                    <p>Our team verifies your tasks for fraud</p>
+                                </div>
+                            </div>
+                            <div class="timeline-item">
+                                <div class="t-bullet">3</div>
+                                <div class="t-content">
+                                    <h4>Processing</h4>
+                                    <p>Transaction sent via TRC-20 Network</p>
+                                </div>
+                            </div>
+                            <div class="timeline-item">
+                                <div class="t-bullet">4</div>
+                                <div class="t-content">
+                                    <h4>Success</h4>
+                                    <p>Funds arrive in your wallet</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -846,7 +938,77 @@
     <!-- Toast Container -->
     <div id="toast-container" class="toast-container"></div>
 
+    <!-- Terms Modal -->
+    <div id="terms-modal" class="modal-overlay screen-hidden">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3>Terms of Service</h3>
+                <button class="btn-icon" onclick="document.getElementById('terms-modal').classList.add('screen-hidden')">
+                    <i class='bx bx-x'></i>
+                </button>
+            </div>
+            <div class="modal-body" style="max-height: 400px; overflow-y: auto; font-size: 14px; line-height: 1.6; color: var(--text-muted);">
+                <p>Welcome to EarnToAnswer. By using our platform, you agree to the following rules:</p>
+                <ul style="margin: 15px 0; padding-left: 20px;">
+                    <li><strong>Anti-Fraud:</strong> VPNs, proxies, and multiple accounts per user are strictly prohibited.</li>
+                    <li><strong>Withdrawals:</strong> Minimum withdrawal is $10.00 USDT via TRC-20 network.</li>
+                    <li><strong>Daily Cap:</strong> Users are limited to $5.00 daily earnings to ensure platform stability.</li>
+                    <li><strong>Account Security:</strong> You are responsible for maintaining the security of your account.</li>
+                </ul>
+                <p>Violation of these terms will result in permanent account suspension and forfeiture of balance.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary btn-block" onclick="document.getElementById('terms-modal').classList.add('screen-hidden')">I Understand</button>
+            </div>
+        </div>
+    </div>
+
     <!-- App Logic -->
-    <script type="module" src="app.js"></script>
+    <script>
+        // UI-only logic that needs to work even if the module fails to load due to CORS/file protocol
+        window.switchAuthTab = (type) => {
+            const loginForm = document.getElementById('login-form');
+            const regForm = document.getElementById('register-form');
+            const loginTab = document.getElementById('tab-login');
+            const regTab = document.getElementById('tab-register');
+            const title = document.getElementById('auth-title');
+            const subtitle = document.getElementById('auth-subtitle');
+
+            if (type === 'login') {
+                loginForm.style.display = 'flex';
+                regForm.style.display = 'none';
+                loginTab.classList.add('active');
+                regTab.classList.remove('active');
+                title.innerText = "Welcome Back";
+                subtitle.innerText = "Sign in to continue earning USDT rewards";
+            } else {
+                loginForm.style.display = 'none';
+                regForm.style.display = 'flex';
+                loginTab.classList.remove('active');
+                regTab.classList.add('active');
+                title.innerText = "Create Account";
+                subtitle.innerText = "Join thousands of users earning daily rewards";
+                if (window.refreshSecurityCheck) window.refreshSecurityCheck();
+            }
+        };
+
+        window.showTerms = () => {
+            const termsModal = document.getElementById('terms-modal');
+            if (termsModal) termsModal.classList.remove('screen-hidden');
+        };
+
+        window.closeAuthModal = () => {
+            document.getElementById('landing-page').classList.add('screen-hidden');
+            document.getElementById('main-app').classList.remove('screen-hidden');
+        };
+
+        // Check if running via file://
+        if (window.location.protocol === 'file:') {
+            setTimeout(() => {
+                alert("CRITICAL: You are opening this as a file. Firebase and Registration WILL NOT WORK. \n\nPlease use a local server (e.g., Live Server in VS Code, or 'npx serve').");
+            }, 1000);
+        }
+    </script>
+    <script type="module" src="app.js?v=1.0.1"></script>
 </body>
 </html>

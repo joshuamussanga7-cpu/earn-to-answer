@@ -77,7 +77,7 @@ const logoutBtn = document.getElementById('logout-btn');
 const balanceSpan = document.getElementById('balance');
 const balanceBigSpan = document.getElementById('balance-big');
 const tasksCountSpan = document.getElementById('tasks-count');
-const videoProgressText = document.getElementById('video-progress');
+const videoProgressText = document.getElementById('video-progress-text-center');
 const watchVideoBtn = document.getElementById('watch-video-btn');
 const walletInput = document.getElementById('wallet-address');
 const saveWalletBtn = document.getElementById('save-wallet-btn');
@@ -86,6 +86,7 @@ const userAvatar = document.getElementById('user-avatar');
 const themeToggle = document.getElementById('theme-toggle');
 const themeIcon = themeToggle ? themeToggle.querySelector('i') : null;
 const requestPayoutBtn = document.getElementById('request-payout-btn');
+const notifBell = document.getElementById('notif-btn');
 
 const promoInput = document.getElementById('promo-code-input');
 
@@ -95,6 +96,9 @@ document.documentElement.setAttribute('data-theme', savedTheme);
 if (themeIcon) {
     themeIcon.className = savedTheme === 'dark' ? 'bx bx-sun' : 'bx bx-moon';
 }
+
+// Initialize security check on load
+refreshSecurityCheck();
 
 if (themeToggle) {
     themeToggle.addEventListener('click', () => {
@@ -117,20 +121,102 @@ const referralLinkInput = document.getElementById('referral-link');
 const leaderboardBody = document.getElementById('leaderboard-body');
 const historyBody = document.getElementById('history-body');
 
+// Mock Ad Network for development (Replace with real Ad Network SDK later)
+window.showAdNetworkInterstitial = (callback) => {
+    console.log("Ad Network: Initializing...");
+    showToast("Loading Sponsored Ad...", "info");
+    setTimeout(() => {
+        console.log("Ad Network: Ad Finished.");
+        callback();
+    }, 2000); // 2-second mock ad
+};
+
 // --- Helpers ---
+let prevValues = {
+    balance: 0,
+    tasks: 0,
+    xpPercent: 0
+};
+
+function animateValue(id, start, end, duration, decimals = 0, suffix = "") {
+    const obj = document.getElementById(id);
+    if (!obj) return;
+
+    // Sanitize inputs to prevent NaN errors
+    const startVal = isNaN(parseFloat(start)) ? 0 : parseFloat(start);
+    const endVal = isNaN(parseFloat(end)) ? 0 : parseFloat(end);
+
+    // Don't animate if values are the same
+    if (startVal === endVal) {
+        obj.innerHTML = (decimals === 0 ? Math.floor(endVal) : endVal.toFixed(decimals)) + suffix;
+        return;
+    }
+
+    let startTimestamp = null;
+    const step = (timestamp) => {
+        if (!startTimestamp) startTimestamp = timestamp;
+        const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+        const current = progress * (endVal - startVal) + startVal;
+
+        if (decimals === 0) {
+            obj.innerHTML = Math.floor(current) + suffix;
+        } else {
+            obj.innerHTML = current.toFixed(decimals) + suffix;
+        }
+
+        if (progress < 1) {
+            window.requestAnimationFrame(step);
+        } else {
+            obj.innerHTML = (decimals === 0 ? Math.floor(endVal) : endVal.toFixed(decimals)) + suffix;
+        }
+    };
+    window.requestAnimationFrame(step);
+}
+
 async function getUserMetadata() {
+    const fetchWithTimeout = async (url, timeout = 5000) => {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeout);
+        try {
+            const response = await fetch(url, { signal: controller.signal });
+            return await response.json();
+        } finally {
+            clearTimeout(id);
+        }
+    };
+
     try {
-        const response = await fetch('https://ipwho.is/');
-        const data = await response.json();
+        // Primary Check
+        const data = await fetchWithTimeout('https://ipwho.is/');
         return {
-            ip: data.ip,
-            country: data.country,
+            ip: data.ip || "Unknown",
+            country: data.country || "Unknown",
             isProxy: data.security?.proxy || data.security?.vpn || data.security?.tor || false,
             userAgent: navigator.userAgent,
             lastSeen: serverTimestamp()
         };
     } catch (e) {
-        return { ip: "unknown", isProxy: false, userAgent: navigator.userAgent, lastSeen: serverTimestamp() };
+        console.warn("Primary VPN check failed or timed out, trying fallback...", e);
+        try {
+            // Secondary Fallback (using a different provider)
+            const data = await fetchWithTimeout('https://ipapi.co/json/');
+            return {
+                ip: data.ip || "Unknown",
+                country: data.country_name || "Unknown",
+                isProxy: false, // Fallback service might not provide proxy info in free tier
+                userAgent: navigator.userAgent,
+                lastSeen: serverTimestamp()
+            };
+        } catch (e2) {
+            console.warn("All VPN checks failed, proceeding with safety defaults:", e2);
+            return {
+                ip: "N/A (Timeout)",
+                country: "Unknown",
+                isProxy: false, // Don't block users if services are down
+                userAgent: navigator.userAgent,
+                lastSeen: serverTimestamp()
+            };
+        }
     }
 }
 
@@ -150,7 +236,6 @@ async function addAuditLog(action, details, targetUid = null) {
     } catch (e) {
         console.error("Audit log error:", e);
     }
-}
 }
 
 function showToast(message, type = 'success') {
@@ -182,7 +267,41 @@ function validateTRC20(address) {
     return regex.test(address);
 }
 
+// --- Global Loader Helper ---
+function showGlobalLoader(text = "Secure connection...") {
+    const loader = document.getElementById('global-loader');
+    const loaderText = document.getElementById('loader-text');
+    if (loader) {
+        if (loaderText) loaderText.innerText = text;
+        loader.classList.remove('screen-hidden');
+        loader.style.display = 'flex';
+    }
+}
+
+function hideGlobalLoader() {
+    const loader = document.getElementById('global-loader');
+    if (loader) {
+        loader.classList.add('screen-hidden');
+        loader.style.display = 'none';
+    }
+}
+
 // --- Auth Logic ---
+
+// Generate a simple math challenge for registration
+let currentSecurityAnswer = 0;
+window.refreshSecurityCheck = function() {
+    const a = Math.floor(Math.random() * 10) + 1;
+    const b = Math.floor(Math.random() * 10) + 1;
+    currentSecurityAnswer = a + b;
+    const label = document.getElementById('human-check-label');
+    if (label) label.innerText = `Security Check: ${a} + ${b} = ?`;
+    console.log("Security check refreshed. Answer:", currentSecurityAnswer);
+}
+
+// Ensure it's available for the UI
+window.showGlobalLoader = showGlobalLoader;
+window.hideGlobalLoader = hideGlobalLoader;
 
 window.switchAuthTab = (type) => {
     const loginForm = document.getElementById('login-form');
@@ -206,53 +325,95 @@ window.switchAuthTab = (type) => {
         regTab.classList.add('active');
         title.innerText = "Create Account";
         subtitle.innerText = "Join thousands of users earning daily rewards";
+        refreshSecurityCheck();
+    }
+};
+
+window.closeAuthModal = () => {
+    // onAuthStateChanged handles the main switch, but this ensures immediate UI feedback
+    if (landingPage) landingPage.classList.add('screen-hidden');
+    if (mainApp) mainApp.classList.remove('screen-hidden');
+};
+
+window.showTerms = () => {
+    const termsModal = document.getElementById('terms-modal');
+    if (termsModal) {
+        termsModal.classList.remove('screen-hidden');
+    } else {
+        alert("Terms of Service:\n1. No VPNs/Proxies.\n2. One account per person.\n3. Minimum withdrawal $10.\n4. Max daily earning $5.");
     }
 };
 
 registerBtn.addEventListener('click', async () => {
-    const fullName = document.getElementById('reg-name').value;
-    const email = document.getElementById('reg-email').value;
-    const password = document.getElementById('reg-password').value;
+    const fullName = document.getElementById('reg-name').value.trim();
+    const email = document.getElementById('reg-email').value.trim();
+    const password = document.getElementById('reg-password').value.trim();
+    const confirmPassword = document.getElementById('reg-confirm-password').value.trim();
+    const humanAnswer = parseInt(document.getElementById('reg-human-answer').value);
+    const regRefInput = document.getElementById('reg-ref').value.trim();
+    const termsAccepted = document.getElementById('reg-terms-check').checked;
 
-    if (!fullName || !email || !password) {
+    if (!fullName || !email || !password || !confirmPassword) {
         showToast("Please fill in all fields.", "error");
         return;
     }
 
+    if (password !== confirmPassword) {
+        showToast("Passwords do not match.", "error");
+        return;
+    }
+
+    if (humanAnswer !== currentSecurityAnswer) {
+        showToast("Security check failed. Try again.", "error");
+        refreshSecurityCheck();
+        return;
+    }
+
+    if (!termsAccepted) {
+        showToast("Please agree to the Terms and Anti-VPN policy.", "error");
+        return;
+    }
+
     const urlParams = new URLSearchParams(window.location.search);
-    const referredByCode = urlParams.get('ref') || null;
+    const referredByCode = regRefInput || urlParams.get('ref') || null;
 
     try {
+        console.log("Starting registration process...");
+        showGlobalLoader("Creating Secure Account...");
         registerBtn.classList.add('btn-loading');
         registerBtn.disabled = true;
 
         const meta = await getUserMetadata();
+        console.log("Metadata fetched:", meta);
+
         if (meta.isProxy) {
             showToast("VPN/Proxy detected. Please disable it to continue.", "error");
+            hideGlobalLoader();
+            registerBtn.classList.remove('btn-loading');
+            registerBtn.disabled = false;
             return;
         }
 
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
+        console.log("Firebase Auth user created:", user.uid);
+
         const myReferralCode = generateReferralCode();
 
         let referrerUid = null;
         if (referredByCode) {
-            const q = query(collection(db, "users"), where("referralCode", "==", referredByCode), limit(1));
-            const querySnapshot = await getDocs(q);
-            if (!querySnapshot.empty) {
-                referrerUid = querySnapshot.docs[0].id;
-                await updateDoc(doc(db, "users", referrerUid), {
-                    referralCount: increment(1)
-                });
-
-                // Add notification for referrer
-                await addDoc(collection(db, "users", referrerUid, "notifications"), {
-                    title: "🤝 New Referral!",
-                    message: `${fullName} joined using your link. You'll earn 10% of their rewards!`,
-                    timestamp: serverTimestamp(),
-                    read: false
-                });
+            try {
+                const q = query(collection(db, "users"), where("referralCode", "==", referredByCode), limit(1));
+                const querySnapshot = await getDocs(q);
+                if (!querySnapshot.empty) {
+                    referrerUid = querySnapshot.docs[0].id;
+                    // Increment referral count on the referrer document
+                    await updateDoc(doc(db, "users", referrerUid), {
+                        referralCount: increment(1)
+                    });
+                }
+            } catch (refErr) {
+                console.warn("Referral lookup failed (likely permissions):", refErr);
             }
         }
 
@@ -263,11 +424,15 @@ registerBtn.addEventListener('click', async () => {
             walletAddress: "",
             videoTasksCompleted: 0,
             totalTasksDone: 0,
+            totalVideosWatched: 0,
+            totalXP: 0,
             referralCount: 0,
             referralEarnings: 0,
             referralCode: myReferralCode,
             referredBy: referrerUid,
             completedSocialTasks: [],
+            completedCustomTasks: [],
+            usedPromos: [],
             lastCheckIn: null,
             lastWheelSpin: null,
             checkInStreak: 0,
@@ -284,6 +449,7 @@ registerBtn.addEventListener('click', async () => {
         if (error.code === 'auth/email-already-in-use') msg = "This email is already registered.";
         showToast(msg, 'error');
     } finally {
+        hideGlobalLoader();
         registerBtn.classList.remove('btn-loading');
         registerBtn.disabled = false;
     }
@@ -298,6 +464,7 @@ loginBtn.addEventListener('click', async () => {
         return;
     }
 
+    showGlobalLoader("Authenticating...");
     loginBtn.classList.add('btn-loading');
     loginBtn.disabled = true;
 
@@ -305,6 +472,7 @@ loginBtn.addEventListener('click', async () => {
         const meta = await getUserMetadata();
         if (meta.isProxy) {
             showToast("VPN/Proxy detected. Please disable it to continue.", "error");
+            hideGlobalLoader();
             return;
         }
 
@@ -316,6 +484,7 @@ loginBtn.addEventListener('click', async () => {
         if (userDoc.exists() && userDoc.data().isBanned) {
             await signOut(auth);
             showToast("Your account has been suspended for violating terms.", "error");
+            hideGlobalLoader();
             return;
         }
 
@@ -332,6 +501,7 @@ loginBtn.addEventListener('click', async () => {
         console.error("Login Error:", error);
         showToast("Invalid email or password.", 'error');
     } finally {
+        hideGlobalLoader();
         loginBtn.classList.remove('btn-loading');
         loginBtn.disabled = false;
     }
@@ -922,6 +1092,11 @@ window.approvePayout = async (pid) => {
         const userTxRef = doc(db, "users", payoutData.uid, "transactions", pid);
         await updateDoc(userTxRef, { status: "Completed" });
 
+        // Update Timeline UI if the user is looking at it
+        if (auth.currentUser && auth.currentUser.uid === payoutData.uid) {
+            updateWithdrawalTimeline('Success');
+        }
+
         await addDoc(collection(db, "users", payoutData.uid, "notifications"), {
             title: "💰 Payment Sent!",
             message: `Your withdrawal of $${payoutData.amount.toFixed(2)} USDT has been processed.`,
@@ -934,6 +1109,37 @@ window.approvePayout = async (pid) => {
         showToast("Error processing payout", "error");
     }
 };
+
+// --- Withdrawal UI Timeline ---
+function updateWithdrawalTimeline(status) {
+    const bullets = document.querySelectorAll('.timeline-item .t-bullet');
+    const statusBox = document.getElementById('withdrawal-status-box');
+    const statusText = document.getElementById('withdrawal-status-text');
+
+    if (!statusBox || !statusText) return;
+
+    // Reset
+    bullets.forEach(b => b.classList.remove('active'));
+    statusBox.style.display = 'block';
+
+    if (status === 'Pending') {
+        bullets[0].classList.add('active');
+        bullets[1].classList.add('active');
+        statusText.innerText = "Request received. Pending audit.";
+    } else if (status === 'Processing') {
+        bullets[0].classList.add('active');
+        bullets[1].classList.add('active');
+        bullets[2].classList.add('active');
+        statusText.innerText = "Payment being processed on TRC-20.";
+    } else if (status === 'Completed' || status === 'Success') {
+        bullets.forEach(b => b.classList.add('active'));
+        statusText.innerText = "Payment Sent! Check your wallet.";
+        statusBox.style.borderColor = "var(--success)";
+        statusBox.style.background = "rgba(16, 185, 129, 0.05)";
+    } else {
+        statusBox.style.display = 'none';
+    }
+}
 
 // --- Daily Check-in ---
 function updateDailyCheckInUI(userData) {
@@ -1110,7 +1316,11 @@ function updateLevelUI(userData) {
     const progress = (xp / 50) * 100;
     if (document.getElementById('user-level')) document.getElementById('user-level').innerText = level;
     if (document.getElementById('level-bar')) document.getElementById('level-bar').style.width = `${progress}%`;
-    if (document.getElementById('level-percent')) document.getElementById('level-percent').innerText = `${Math.floor(progress)}%`;
+
+    if (prevValues.xpPercent !== progress) {
+        animateValue('level-percent', prevValues.xpPercent, progress, 1000, 0, "%");
+        prevValues.xpPercent = progress;
+    }
 }
 
 // --- Live Payouts Feed ---
@@ -1390,13 +1600,20 @@ window.markNotifRead = async (id) => {
     }
 };
 
-const notifBell = document.getElementById('notif-bell');
+const notifBell = document.getElementById('notif-btn');
 if (notifBell) {
-    notifBell.addEventListener('click', () => {
+    notifBell.addEventListener('click', (e) => {
+        e.stopPropagation();
         const dropdown = document.getElementById('notif-dropdown');
         if (dropdown) dropdown.classList.toggle('active');
     });
 }
+
+// Close dropdown on click outside
+document.addEventListener('click', () => {
+    const dropdown = document.getElementById('notif-dropdown');
+    if (dropdown) dropdown.classList.remove('active');
+});
 
 async function loadAdminStats() {
     const statsContainer = document.getElementById('admin-stats-grid');
@@ -1665,12 +1882,26 @@ async function updateChartData(uid) {
 }
 
 // --- Main Auth Observer ---
+let userDocUnsubscribe = null;
+let payoutUnsubscribe = null;
+let notificationsUnsubscribe = null;
+let leaderboardUnsubscribe = null;
+let affLeaderboardUnsubscribe = null;
+
 onAuthStateChanged(auth, (user) => {
+    // Unsubscribe from previous listeners to prevent memory leaks and duplicate updates
+    if (userDocUnsubscribe) userDocUnsubscribe();
+    if (payoutUnsubscribe) payoutUnsubscribe();
+    if (notificationsUnsubscribe) notificationsUnsubscribe();
+    if (leaderboardUnsubscribe) leaderboardUnsubscribe();
+    if (affLeaderboardUnsubscribe) affLeaderboardUnsubscribe();
+
     if (user) {
         landingPage.classList.add('screen-hidden');
         mainApp.classList.remove('screen-hidden');
         requestNotificationPermission(user.uid);
-        onSnapshot(doc(db, "users", user.uid), (doc) => {
+
+        userDocUnsubscribe = onSnapshot(doc(db, "users", user.uid), (doc) => {
             if (doc.exists()) {
                 const data = doc.data();
                 syncUserData(data);
@@ -1684,12 +1915,30 @@ onAuthStateChanged(auth, (user) => {
                 }
             }
         });
+
         loadLeaderboard();
         loadAffiliateLeaderboard();
         loadTransactionHistory(user.uid);
         loadNotifications(user.uid);
         updateChartData(user.uid);
         initLiveFeed();
+
+        // Real-time Payout/Withdrawal Status Listener
+        const payoutQ = query(collection(db, "payouts"), where("uid", "==", user.uid), orderBy("timestamp", "desc"), limit(1));
+        payoutUnsubscribe = onSnapshot(payoutQ, (snapshot) => {
+            if (!snapshot.empty) {
+                const data = snapshot.docs[0].data();
+                // Show timeline if it's not a very old completed payout (e.g. within last 3 days)
+                const isRecent = data.timestamp && typeof data.timestamp.toDate === 'function' && (Date.now() - data.timestamp.toDate() < 3 * 24 * 60 * 60 * 1000);
+                if (data.status !== 'Completed' || isRecent) {
+                    updateWithdrawalTimeline(data.status);
+                } else {
+                    updateWithdrawalTimeline(null);
+                }
+            } else {
+                updateWithdrawalTimeline(null);
+            }
+        });
     } else {
         landingPage.classList.remove('screen-hidden');
         mainApp.classList.add('screen-hidden');
@@ -1781,9 +2030,12 @@ function syncUserData(data) {
     document.getElementById('user-name-display').innerText = data.fullName || 'Earner';
 
     const balance = data.balance || 0;
-    const balStr = balance.toFixed(2);
-    if (balanceSpan) balanceSpan.innerText = balStr;
-    if (balanceBigSpan) balanceBigSpan.innerText = balStr;
+    if (prevValues.balance !== balance) {
+        animateValue('balance', prevValues.balance, balance, 1000, 2);
+        animateValue('balance-big', prevValues.balance, balance, 1000, 2);
+        if (document.getElementById('withdraw-balance')) animateValue('withdraw-balance', prevValues.balance, balance, 1000, 2);
+        prevValues.balance = balance;
+    }
 
     // Payout Progress
     const payoutGoal = PLATFORM_CONFIG.limits.minWithdrawal;
@@ -1793,7 +2045,12 @@ function syncUserData(data) {
     if (payoutBar) payoutBar.style.width = `${payoutPercent}%`;
     if (payoutText) payoutText.innerText = `${Math.floor(payoutPercent)}%`;
 
-    if (tasksCountSpan) tasksCountSpan.innerText = data.totalTasksDone || 0;
+    const tasks = data.totalTasksDone || 0;
+    if (prevValues.tasks !== tasks) {
+        animateValue('tasks-count', prevValues.tasks, tasks, 1000, 0);
+        prevValues.tasks = tasks;
+    }
+
     if (walletInput) walletInput.value = data.walletAddress || "";
 
     // Video Task Progress (towards $0.10 reward)

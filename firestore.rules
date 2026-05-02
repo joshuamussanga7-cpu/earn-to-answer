@@ -15,7 +15,7 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read: if isAdmin() || isOwner(userId);
+      allow read: if isSignedIn();
       allow create: if isOwner(userId) && request.resource.data.role == 'user' && request.resource.data.balance == 0;
 
       // Profile updates
